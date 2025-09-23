@@ -1,4 +1,2 @@
-polyps_horner/kvasir-seg
-unet_super_res/data
 __pycache__
 .pytest_cache
