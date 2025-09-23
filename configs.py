@@ -17,17 +17,17 @@ LIDAR_SIZE = [L1, 2560, 2560]
 
 
 #Sentinel Info
-SEN_IN_CHANNELS = 11
+SEN_BANDS = 11
 SEN_PERIODS = 21
-S0 = SEN_IN_CHANNELS * SEN_PERIODS + 1
-SEN_SIZE = [S0, 256, 256]
+S1 = SEN_BANDS * SEN_PERIODS + 1
+SEN_SIZE = [S1, 256, 256]
 
 
 #Field Info
 field_var_guess = 50
 
 #Number of channels after sentinel data is compressed
-S1 = SEN_IN_CHANNELS * SEN_PERIODS + field_var_guess
+S1_guess = SEN_BANDS * SEN_PERIODS + field_var_guess
 
 
 #Weather Info
