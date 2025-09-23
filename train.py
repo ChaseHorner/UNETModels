@@ -3,9 +3,6 @@ import torch
 from torcheval.metrics.functional import peak_signal_noise_ratio
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 
-import configs
-
-
 def train_epoch(model, optimizer, criterion, train_dataloader, device):
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     model.train()
@@ -23,26 +20,17 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
 
         # compute loss
         loss = criterion(predictions, labels)
-        loss = loss / configs.ACCUMULATION_STEPS
 
         # backward
         loss.backward()
 
-        # Gradient accumulation step
-        if (step + 1) % configs.ACCUMULATION_STEPS == 0:
-            optimizer.step()
-            optimizer.zero_grad()
+        optimizer.step()
+        optimizer.zero_grad()
 
-        running_loss = loss.item() * configs.ACCUMULATION_STEPS
+        running_loss = loss.item()
         running_psnr += peak_signal_noise_ratio(predictions, labels).mean().item()
         running_ssim += ssim_metric(predictions, labels).mean().item()
         print(f"Training Step [{step+1}/{len(train_dataloader)}]", end = '\r')
-
-
-        # Flush leftover gradients if dataset isn’t divisible by accumulation_steps
-    if (step + 1) % configs.ACCUMULATION_STEPS != 0:
-        optimizer.step()
-        optimizer.zero_grad()
 
     # Average over number of batches
     num_batches = len(train_dataloader)
