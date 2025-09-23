@@ -1,5 +1,5 @@
-from .. import model
-from .. import configs
+from models.components.weather_compression import WeatherCompression
+import configs
 import torch
 
 
@@ -10,7 +10,7 @@ def test_wc_in_season():
     kernel_size = configs.IN_SEASON_KERNEL_SIZE
     input_length = configs.IN_SEASON_DAYS
 
-    wc = model.WeatherCompression(in_channels, out_channels, kernel_size)
+    wc = WeatherCompression(in_channels, out_channels, kernel_size)
     input_tensor = torch.randn(1, in_channels, input_length)
     output_tensor = wc(input_tensor)
 
@@ -24,7 +24,7 @@ def test_wc_pre_season():
     kernel_size = configs.PRE_SEASON_KERNEL_SIZE
     input_length = configs.PRE_SEASON_DAYS
 
-    wc = model.WeatherCompression(in_channels, out_channels, kernel_size)
+    wc = WeatherCompression(in_channels, out_channels, kernel_size)
     input_tensor = torch.randn(1, in_channels, input_length)
     output_tensor = wc(input_tensor)
 
@@ -41,8 +41,8 @@ def test_wc_concat():
     input_length_1 = configs.IN_SEASON_DAYS
     input_length_2 = configs.PRE_SEASON_DAYS
 
-    wc_1 = model.WeatherCompression(in_channels, out_channels_1, kernel_size_1)
-    wc_2 = model.WeatherCompression(in_channels, out_channels_2, kernel_size_2)
+    wc_1 = WeatherCompression(in_channels, out_channels_1, kernel_size_1)
+    wc_2 = WeatherCompression(in_channels, out_channels_2, kernel_size_2)
 
     input_tensor_1 = torch.randn(1, in_channels, input_length_1)
     input_tensor_2 = torch.randn(1, in_channels, input_length_2)

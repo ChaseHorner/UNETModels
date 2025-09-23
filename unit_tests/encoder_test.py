@@ -1,11 +1,11 @@
-from .. import model
-from .. import configs
+from models.components.encoder import Encoder
+import configs
 import torch
 
 
 
 def test_encoder_basic_scale_two():
-    encoder = model.Encoder(3, 64, scale_size = 2)
+    encoder = Encoder(3, 64, scale_size = 2)
     input_tensor = torch.randn(1, 3, 128, 128)
     output_tensor = encoder(input_tensor)
 
@@ -14,7 +14,7 @@ def test_encoder_basic_scale_two():
 
 
 def test_encoder_basic_scale_five():
-    encoder = model.Encoder(1, 32, scale_size = 5)
+    encoder = Encoder(1, 32, scale_size = 5)
     input_tensor = torch.randn(1, 1, 100, 100)
     output_tensor = encoder(input_tensor)
 
@@ -24,7 +24,7 @@ def test_encoder_basic_scale_five():
 def test_encoder_with_sentinel_concat():
     scale_size = 2
 
-    enc_1 = model.Encoder(configs.C2 + configs.S1, configs.C3, scale_size)
+    enc_1 = Encoder(configs.C2 + configs.S1, configs.C3, scale_size)
 
     input_tensor = torch.randn(1, configs.C2 + configs.S1, 256, 256)
     output_tensor = enc_1(input_tensor)
@@ -41,7 +41,7 @@ def test_encoder_start():
     scale_size = 2
     batch_size = 1
 
-    encoder = model.Encoder(in_channels, out_channels, scale_size)
+    encoder = Encoder(in_channels, out_channels, scale_size)
     input_tensor = torch.randn(batch_size, in_channels, height, width)
     output_tensor = encoder(input_tensor)
 
@@ -53,8 +53,8 @@ def test_encoder_start():
 
 
 def test_encoder_chain_end():
-    enc_1 = model.Encoder(configs.C5, configs.C6, scale_size = 2)
-    enc_2 = model.Encoder(configs.C6, configs.C7, scale_size = 2)
+    enc_1 = Encoder(configs.C5, configs.C6, scale_size = 2)
+    enc_2 = Encoder(configs.C6, configs.C7, scale_size = 2)
 
     input_tensor = torch.randn(1, configs.C5, 32, 32)
     output_tensor_1 = enc_1(input_tensor)
@@ -64,8 +64,8 @@ def test_encoder_chain_end():
         f"Expected shape {(1, configs.C7, 8, 8)}, but got {output_tensor_2.shape}"
 
 def test_encoder_chain_start():
-    enc_1 = model.Encoder(configs.C1, configs.C2, scale_size = 2)
-    enc_2 = model.Encoder(configs.C2, configs.C3, scale_size = 5)
+    enc_1 = Encoder(configs.C1, configs.C2, scale_size = 2)
+    enc_2 = Encoder(configs.C2, configs.C3, scale_size = 5)
 
     input_tensor = torch.randn(1, configs.C1, 1280, 1280)
     output_tensor_1 = enc_1(input_tensor)
@@ -76,8 +76,8 @@ def test_encoder_chain_start():
 
 
 def test_encoder_chain_sentinel_concat():
-    enc_1 = model.Encoder(configs.C1, configs.C2, scale_size = 5)
-    enc_2 = model.Encoder(configs.C2 + configs.S1, configs.C3, scale_size = 2)
+    enc_1 = Encoder(configs.C1, configs.C2, scale_size = 5)
+    enc_2 = Encoder(configs.C2 + configs.S1, configs.C3, scale_size = 2)
 
     input_tensor = torch.randn(1, configs.C1, 1280, 1280)
     output_tensor_1 = enc_1(input_tensor)
