@@ -29,26 +29,36 @@ class FieldDataset(Dataset):
     def __getitem__(self, idx):
         sample_dir = self.samples[idx]
         lidar = torch.load(os.path.join(sample_dir, 'lidar.pt'))
-        sentinel = torch.load(os.path.join(sample_dir, 'sentinel.pt'))
-        # in_season = torch.load(os.path.join(sample_dir, 'in_season.pt'))
+        sentinel = torch.load(os.path.join(sample_dir, 'sentinel.pt')) 
+        # in_season = torch.load(os.path.join(sample_dir, 'in_season.pt'))  
         # pre_season = torch.load(os.path.join(sample_dir, 'pre_season.pt'))
-        in_season = torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS])
-        pre_season = torch.zeros([configs.WEATHER_IN_CHANNELS, configs.PRE_SEASON_DAYS])
+        in_season = torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS])  
+        pre_season = torch.zeros([configs.WEATHER_IN_CHANNELS, configs.PRE_SEASON_DAYS]) 
         target = torch.load(os.path.join(sample_dir, 'target.pt'))
 
-        return lidar, sentinel, in_season, pre_season, target
+        returns = []
+        if 'lidar' in self.input_keys:
+            returns.append(lidar)
+        if 'sentinel' in self.input_keys:
+            returns.append(sentinel)
+        if 'in_season' in self.input_keys:
+            returns.append(in_season)
+        if 'pre_season' in self.input_keys:
+            returns.append(pre_season)
+        returns.append(target)
+        return returns
 
+if __name__ == "__main__":
+    start_time = time.time()
+    dataset = FieldDataset(r"Z:\prepped_data\processed_tensors", input_keys=['lidar', 'sentinel'])
+    dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
 
-start_time = time.time()
-dataset = FieldDataset(r"Z:\prepped_data\processed_tensors", input_keys=['lidar', 'sentinel'])
-dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
-
-for lidar, sentinel, in_season, pre_season, target in dataloader:
-    print(f"Lidar batch shape: {lidar.shape}")
-    print(f"Sentinel batch shape: {sentinel.shape}")
-    print(f"In-season weather batch shape: {in_season.shape}")
-    print(f"Pre-season weather batch shape: {pre_season.shape}")
-    print(f"Target batch shape: {target.shape}")
-    break  # Just test one batch
-end_time = time.time()
-print(f"Data loading time: {end_time - start_time:.2f} seconds")
+    for lidar, sentinel, in_season, pre_season, target in dataloader:
+        print(f"Lidar batch shape: {lidar.shape}")
+        print(f"Sentinel batch shape: {sentinel.shape}")
+        print(f"In-season weather batch shape: {in_season.shape}")
+        print(f"Pre-season weather batch shape: {pre_season.shape}")
+        print(f"Target batch shape: {target.shape}")
+        break  # Just test one batch
+    end_time = time.time()
+    print(f"Data loading time: {end_time - start_time:.2f} seconds")
