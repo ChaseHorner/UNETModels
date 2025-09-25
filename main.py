@@ -29,9 +29,9 @@ criterion = nn.L1Loss()
 optimizer = optim.AdamW(unet_model.parameters(), lr=1e-4, betas=[0.5,0.999])
 EPOCHS = 40
 
-model_folder = './UNET'
+model_folder = './UNET_2'
 os.makedirs(model_folder, exist_ok = True)
-MODEL_NAME = 'unet_model_2'
+MODEL_NAME = 'unet_2'
 
 print("\n===============================\n")
 print(f"Training on {device} for {EPOCHS} epochs...")
@@ -40,4 +40,4 @@ metrics = train_model(
 
 
 chart_metrics(metrics, model_folder, EPOCHS)
-visualize_predictions(unet_model, model_folder, MODEL_NAME, val_loader, num_images=2, device=device)
+visualize_predictions(unet_model, model_folder, MODEL_NAME, dataset.with_field_year(), num_images=2, device=device)

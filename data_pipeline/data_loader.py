@@ -28,14 +28,14 @@ class FieldDataset(Dataset):
     def __getitem__(self, idx):
         sample_dir = self.samples[idx]
 
-        feature = {
+        features = {
 
         'lidar' : torch.load(os.path.join(sample_dir, 'lidar.pt')),
         'sentinel' : torch.load(os.path.join(sample_dir, 'sentinel.pt')),
-        # 'in_season' : torch.load(os.path.join(sample_dir, 'in_season.pt')),  
-        # 'pre_season' : torch.load(os.path.join(sample_dir, 'pre_season.pt')),
-        'in_season' : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS]),
-        'pre_season' : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.PRE_SEASON_DAYS]),
+        # 'weather_in_season' : torch.load(os.path.join(sample_dir, 'in_season.pt')),  
+        # 'weather_pre_season' : torch.load(os.path.join(sample_dir, 'pre_season.pt')),
+        'weather_in_season' : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS]),
+        'weather_pre_season' : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.PRE_SEASON_DAYS]),
         'target' : torch.load(os.path.join(sample_dir, 'target.pt')),
         'field_year' : sample_dir.split(os.sep)[-2] + '_' + sample_dir.split(os.sep)[-1]
         }
@@ -45,7 +45,7 @@ class FieldDataset(Dataset):
 
         return returns
     
-    def with_field_year(self, idx):
+    def with_field_year(self):
         new_dataset = FieldDataset.__new__(FieldDataset)
         new_dataset.samples = self.samples 
         new_dataset.input_keys = self.input_keys + ['field_year']

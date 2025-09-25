@@ -37,9 +37,9 @@ class Unet(nn.Module):
 
         self.final_output = FinalOutput(config.C2 + config.S1, output_channels)
 
-    def forward(self, lidar_data, sentinel_data):
-        x = lidar_data  # (b, lidar_channels, H, W) also called i1 or x1
-        i2 = sentinel_data
+    def forward(self, **kwargs):
+        x = kwargs.get('lidar')  # (b, lidar_channels, H, W) also called i1 or x1
+        i2 = kwargs.get('sentinel')
 
         x = self.enc_1(x)
         x = self.enc_2(x)
