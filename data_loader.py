@@ -12,7 +12,6 @@ class FieldDataset(Dataset):
         input_keys: list of keys for input tensors        """
         self.root_dir = root_dir
         self.input_keys = input_keys
-        self.target_key = target_key
 
         self.samples = []
         for year in os.listdir(root_dir):
