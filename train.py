@@ -81,7 +81,7 @@ def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200):
     epoch_loss = sum(losses) / len(losses)
     return epoch_psnr, epoch_ssim, epoch_loss
 
-def train_model(model, model_name, save_model, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, accu=False):
+def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, accu=False):
     train_psnrs, train_ssims, train_losses = [], [], []
     eval_psnrs, eval_ssims, eval_losses = [], [], []
     best_loss_eval = -1000
@@ -102,15 +102,15 @@ def train_model(model, model_name, save_model, optimizer, criterion, train_datal
 
         # Save best model based on eval loss
         if best_loss_eval > eval_loss :
-            torch.save(model.state_dict(), save_model + f'/{model_name}_lowest_loss.pt')
+            torch.save(model.state_dict(), model_folder + f'/{model_name}_lowest_loss.pt')
             best_loss_eval = (eval_loss, epoch)
         # Save best model based on eval psnr
         if best_psnr_eval < eval_psnr:
-            torch.save(model.state_dict(), save_model + f'/{model_name}_highest_psnr.pt')
+            torch.save(model.state_dict(), model_folder + f'/{model_name}_highest_psnr.pt')
             best_psnr_eval = (eval_psnr, epoch)
         # Save best model based on eval ssim
         if best_ssim_eval < eval_ssim:
-            torch.save(model.state_dict(), save_model + f'/{model_name}_highest_ssim.pt')
+            torch.save(model.state_dict(), model_folder + f'/{model_name}_highest_ssim.pt')
             best_ssim_eval = (eval_ssim, epoch)
         times.append(time.time() - epoch_start_time)
 
@@ -127,15 +127,14 @@ def train_model(model, model_name, save_model, optimizer, criterion, train_datal
     
     # Save epoch number to a txt file
 
-    with open(f"{save_model}/{model_name}_saved_epochs.txt", "a") as f:
+    with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
         f.write(f"Best Loss Epoch: {best_loss_eval[1]} with Loss: {best_loss_eval[0]:.4f}\n")
         f.write(f"Best PSNR Epoch: {best_psnr_eval[1]} with PSNR: {best_psnr_eval[0]:.4f}\n")
         f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")
 
-'''
     # Load best model
-    model.load_state_dict(torch.load(save_model + f'/{model_name}.pt'))
-    model.eval()
+    # model.load_state_dict(torch.load(model_folder + f'/{model_name}.pt'))
+    # model.eval()
     metrics = {
         'train_psnr': train_psnrs,
         'train_ssim': train_ssims,
@@ -145,8 +144,7 @@ def train_model(model, model_name, save_model, optimizer, criterion, train_datal
         'valid_loss': eval_losses,
         'time': times
     }
-    return model, metrics
-'''
+    return metrics
 
 
 def to_float(x):
