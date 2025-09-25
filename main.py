@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torch import optim
 import os
 import torch.optim as optim
-from train_unet import train_model
+from train import train_model
 from data_loader import FieldDataset
 
 
@@ -36,7 +36,7 @@ MODEL_NAME = 'unet_model_2'
 
 print("\n===============================\n")
 print(f"Training on {device} for {EPOCHS} epochs...")
-unet_model, metrics = train_model(
+train_model(
     unet_model, MODEL_NAME, save_model, optimizer, criterion, train_loader, val_loader, EPOCHS, device
 )
 

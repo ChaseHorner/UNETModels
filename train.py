@@ -2,37 +2,49 @@ import time
 import torch
 from torcheval.metrics.functional import peak_signal_noise_ratio
 from torchmetrics.image import StructuralSimilarityIndexMeasure
+import configs
 
-def train_epoch(model, optimizer, criterion, train_dataloader, device):
-    ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+def train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=200, accu=False):
+    ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
     model.train()
-    running_psnr, running_ssim, running_count = 0, 0, 0
-    optimizer.zero_grad()
+    running_loss, running_psnr, running_ssim = 0.0, 0.0, 0.0
 
-    for step, (lidar, sentinel, in_season, pre_season, labels) in enumerate(train_dataloader):
-        lidar = lidar.to(device)
-        sentinel = sentinel.to(device)
-        in_season = in_season.to(device)
-        pre_season = pre_season.to(device)
-        labels = labels.to(device)
+    if accu:
+        optimizer.zero_grad()
 
-        predictions = model(lidar, sentinel, in_season, pre_season)
+    for step, batch in enumerate(train_dataloader):
+        inputs = {k: v.to(device) for k, v in batch.items()}
 
-        # compute loss
-        loss = criterion(predictions, labels)
+        target = inputs.pop("target")
+        predictions = model(**inputs) 
 
-        # backward
-        loss.backward()
+        loss = criterion(predictions, target)
 
+        if accu:
+            scaled_loss = loss / configs.ACCUMULATION_STEPS
+            scaled_loss.backward()
+
+            if (step + 1) % configs.ACCUMULATION_STEPS == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+
+        else:
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+
+        running_loss += loss.item()
+        running_psnr += peak_signal_noise_ratio(predictions, target, data_range=data_range).item()
+        running_ssim += ssim_metric(predictions, target).item()
+
+        print(f"Training Step [{step+1}/{len(train_dataloader)}]", end="\r")
+
+    if accu and (step + 1) % configs.ACCUMULATION_STEPS != 0:
         optimizer.step()
         optimizer.zero_grad()
 
-        running_loss = loss.item()
-        running_psnr += peak_signal_noise_ratio(predictions, labels).mean().item()
-        running_ssim += ssim_metric(predictions, labels).mean().item()
-        print(f"Training Step [{step+1}/{len(train_dataloader)}]", end = '\r')
 
-    # Average over number of batches
     num_batches = len(train_dataloader)
     return (
         running_psnr / num_batches,
@@ -40,28 +52,28 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
         running_loss / num_batches,
     )
 
-def evaluate_epoch(model, criterion, valid_dataloader, device):
-    ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+
+def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200):
+    ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
     model.eval()
     total_psnr, total_ssim, total_count = 0, 0, 0
     losses = []
 
     with torch.no_grad():
-        for lidar, sentinel, in_season, pre_season, labels in valid_dataloader:
-            lidar = lidar.to(device)
-            sentinel = sentinel.to(device)
-            in_season = in_season.to(device)
-            pre_season = pre_season.to(device)
-            labels = labels.to(device)
+        for batch in valid_dataloader:
+            inputs = {k: v.to(device) for k, v in batch.items()}
 
-            predictions = model(lidar, sentinel, in_season, pre_season)
+            target = inputs.pop("target")
+            predictions = model(**inputs) 
 
-            loss = criterion(predictions, labels)
+            loss = criterion(predictions, target)
+
+            loss = criterion(predictions, target)
             losses.append(loss.item())
 
 
-            total_psnr +=  peak_signal_noise_ratio(predictions, labels)
-            total_ssim += ssim_metric(predictions, labels)
+            total_psnr +=  peak_signal_noise_ratio(predictions, target, data_range=data_range).item()
+            total_ssim += ssim_metric(predictions, target).item()
             total_count += 1
 
     epoch_psnr = total_psnr / total_count
@@ -69,7 +81,7 @@ def evaluate_epoch(model, criterion, valid_dataloader, device):
     epoch_loss = sum(losses) / len(losses)
     return epoch_psnr, epoch_ssim, epoch_loss
 
-def train_model(model, model_name, save_model, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device):
+def train_model(model, model_name, save_model, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, accu=False):
     train_psnrs, train_ssims, train_losses = [], [], []
     eval_psnrs, eval_ssims, eval_losses = [], [], []
     best_loss_eval = -1000
@@ -77,7 +89,7 @@ def train_model(model, model_name, save_model, optimizer, criterion, train_datal
     for epoch in range(1, num_epochs+1):
         epoch_start_time = time.time()
         # Training
-        train_psnr, train_ssim, train_loss = train_epoch(model, optimizer, criterion, train_dataloader, device)
+        train_psnr, train_ssim, train_loss = train_epoch(model, optimizer, criterion, train_dataloader, device, accu=accu)
         train_psnrs.append(to_float(train_psnr))
         train_ssims.append(to_float(train_ssim))
         train_losses.append(to_float(train_loss))
@@ -89,9 +101,17 @@ def train_model(model, model_name, save_model, optimizer, criterion, train_datal
         eval_losses.append(to_float(eval_loss))
 
         # Save best model based on eval loss
-        if best_loss_eval < eval_loss :
-            torch.save(model.state_dict(), save_model + f'/{model_name}.pt')
-            best_loss_eval = eval_loss
+        if best_loss_eval > eval_loss :
+            torch.save(model.state_dict(), save_model + f'/{model_name}_lowest_loss.pt')
+            best_loss_eval = (eval_loss, epoch)
+        # Save best model based on eval psnr
+        if best_psnr_eval < eval_psnr:
+            torch.save(model.state_dict(), save_model + f'/{model_name}_highest_psnr.pt')
+            best_psnr_eval = (eval_psnr, epoch)
+        # Save best model based on eval ssim
+        if best_ssim_eval < eval_ssim:
+            torch.save(model.state_dict(), save_model + f'/{model_name}_highest_ssim.pt')
+            best_ssim_eval = (eval_ssim, epoch)
         times.append(time.time() - epoch_start_time)
 
 
@@ -104,7 +124,15 @@ def train_model(model, model_name, save_model, optimizer, criterion, train_datal
             )
         )
         print("-" * 59)
+    
+    # Save epoch number to a txt file
 
+    with open(f"{save_model}/{model_name}_saved_epochs.txt", "a") as f:
+        f.write(f"Best Loss Epoch: {best_loss_eval[1]} with Loss: {best_loss_eval[0]:.4f}\n")
+        f.write(f"Best PSNR Epoch: {best_psnr_eval[1]} with PSNR: {best_psnr_eval[0]:.4f}\n")
+        f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")
+
+'''
     # Load best model
     model.load_state_dict(torch.load(save_model + f'/{model_name}.pt'))
     model.eval()
@@ -118,7 +146,7 @@ def train_model(model, model_name, save_model, optimizer, criterion, train_datal
         'time': times
     }
     return model, metrics
-
+'''
 
 
 def to_float(x):

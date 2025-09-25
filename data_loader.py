@@ -1,16 +1,15 @@
 import os
+from pyexpat import features
 import torch
 from torch.utils.data import Dataset, DataLoader
 import configs
 import time
 
 class FieldDataset(Dataset):
-    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season'], target_key='target'):
+    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'target']):
         """
         root_dir: folder with subfolders per sample, each containing .pt files
-        input_keys: list of keys for input tensors
-        target_key: key for target tensor
-        """
+        input_keys: list of keys for input tensors        """
         self.root_dir = root_dir
         self.input_keys = input_keys
         self.target_key = target_key
@@ -28,24 +27,20 @@ class FieldDataset(Dataset):
 
     def __getitem__(self, idx):
         sample_dir = self.samples[idx]
-        lidar = torch.load(os.path.join(sample_dir, 'lidar.pt'))
-        sentinel = torch.load(os.path.join(sample_dir, 'sentinel.pt')) 
-        # in_season = torch.load(os.path.join(sample_dir, 'in_season.pt'))  
-        # pre_season = torch.load(os.path.join(sample_dir, 'pre_season.pt'))
-        in_season = torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS])  
-        pre_season = torch.zeros([configs.WEATHER_IN_CHANNELS, configs.PRE_SEASON_DAYS]) 
-        target = torch.load(os.path.join(sample_dir, 'target.pt'))
 
-        returns = []
-        if 'lidar' in self.input_keys:
-            returns.append(lidar)
-        if 'sentinel' in self.input_keys:
-            returns.append(sentinel)
-        if 'in_season' in self.input_keys:
-            returns.append(in_season)
-        if 'pre_season' in self.input_keys:
-            returns.append(pre_season)
-        returns.append(target)
+        feature = {
+
+        "lidar" : torch.load(os.path.join(sample_dir, 'lidar.pt')),
+        "sentinel" : torch.load(os.path.join(sample_dir, 'sentinel.pt')),
+        # "in_season" : torch.load(os.path.join(sample_dir, 'in_season.pt')),  
+        # "pre_season" : torch.load(os.path.join(sample_dir, 'pre_season.pt')),
+        "in_season" : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS]),
+        "pre_season" : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.PRE_SEASON_DAYS]),
+        "target" : torch.load(os.path.join(sample_dir, 'target.pt'))
+        }
+
+        returns = {key: features[key] for key in self.input_keys if key in features}
+
         return returns
 
 if __name__ == "__main__":
