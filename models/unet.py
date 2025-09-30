@@ -4,7 +4,7 @@ import configs
 
 from models.components.encoder import Encoder
 from models.components.decoder import Decoder
-from models.components.final_output import FinalOutput
+from models.components.convblock import ConvBlock
 
 class Unet(nn.Module):
     def __init__(
@@ -21,7 +21,8 @@ class Unet(nn.Module):
         self.sentinel_channels = sentinel_channels
         self.output_channels = output_channels
 
-        self.enc_1 = Encoder(lidar_channels, config.C1)
+        self.initial_conv = ConvBlock(lidar_channels, config.C0)    
+        self.enc_1 = Encoder(config.C0, config.C1)
         self.enc_2 = Encoder(config.C1, config.C2, scale_size=5)
         self.enc_3 = Encoder(config.C2 + config.S1, config.C3)
         self.enc_4 = Encoder(config.C3, config.C4)
@@ -35,12 +36,13 @@ class Unet(nn.Module):
         self.dec_4 = Decoder(config.C4, config.C3, skip_channels=config.C3)
         self.dec_3 = Decoder(config.C3, config.C2 + config.S1, skip_channels=config.C2 + config.S1)
 
-        self.final_output = FinalOutput(config.C2 + config.S1, output_channels)
+        self.final_output = ConvBlock(config.C2 + config.S1, output_channels)
 
     def forward(self, **kwargs):
         x = kwargs.get('lidar')  # (b, lidar_channels, H, W) also called i1 or x1
         i2 = kwargs.get('sentinel')
 
+        x = self.initial_conv(x)
         x = self.enc_1(x)
         x = self.enc_2(x)
 
