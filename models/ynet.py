@@ -5,7 +5,7 @@ import configs
 from models.components.encoder import Encoder
 from models.components.decoder import Decoder
 from models.components.final_output import FinalOutput
-from models.components.weather_compression import WeatherCompression
+from models.components.weather_compression import WeatherCompressionAvgPool
 
 class Ynet(nn.Module):
     def __init__(
@@ -24,8 +24,8 @@ class Ynet(nn.Module):
         self.weather_channels = weather_channels
         self.output_channels = output_channels
 
-        self.in_weather_in_season = WeatherCompression(weather_channels, config.W1, kernel_size=config.IN_SEASON_KERNEL_SIZE)
-        self.in_weather_pre_season = WeatherCompression(weather_channels, config.W2, kernel_size=config.PRE_SEASON_KERNEL_SIZE)
+        self.in_weather_in_season = WeatherCompressionAvgPool(weather_channels, config.W1, kernel_size=config.IN_SEASON_KERNEL_SIZE)
+        self.in_weather_pre_season = WeatherCompressionAvgPool(weather_channels, config.W2, kernel_size=config.PRE_SEASON_KERNEL_SIZE)
 
         self.enc_1 = Encoder(lidar_channels, config.C1)
         self.enc_2 = Encoder(config.C1, config.C2, scale_size=5)
