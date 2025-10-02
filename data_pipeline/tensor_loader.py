@@ -11,7 +11,7 @@ save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors"
 
 TARGET_SIZE = [1, 256, 256]
 LIDAR_SIZE = [5, 2560, 2560]
-S2_SIZE = [232, 256, 256]  # 11 bands * 21 periods + 1 yield mask
+S2_SIZE = [231, 256, 256]  # 11 bands * 21 periods + 1 yield mask
 
 
 def make_completed_tensors(save_path):
@@ -73,7 +73,7 @@ def load_dataset(folder_path, save_path, completed_file="completed_tensors.txt",
             output_path = os.path.join(save_path, year, field)
             tasks.append((field_path, output_path))
 
-    print(f"🔄 Processing {len(tasks)} fields with {max_workers} workers...")
+    print(f"Processing {len(tasks)} fields with {max_workers} workers...")
 
     # Run in parallel
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
@@ -86,8 +86,6 @@ def _load_field_wrapper(args):
 def load_field(field_path, output_path, dtype=torch.float32):
     lidar_tensors = []
     s2_tensors = []
-    hrvst_tensor = None
-    yield_mask = None
 
     for data_type in os.listdir(field_path):
         data_type_path = os.path.join(field_path, data_type)
@@ -103,7 +101,7 @@ def load_field(field_path, output_path, dtype=torch.float32):
                         arr = src.read().astype(np.float32)
                         if arr.ndim == 2:
                             arr = arr[None, :, :]  # add channel dimension
-                        yield_mask = torch.from_numpy(arr).type(dtype)
+                        hmask_tensor = torch.from_numpy(arr).type(dtype)
 
             elif file.endswith('.tif'):
                 with rasterio.open(file_path) as src:
@@ -122,14 +120,15 @@ def load_field(field_path, output_path, dtype=torch.float32):
                         print(f"Unknown data type {data_type} in {field_path}, skipping {file_path}")
 
     lidar_tensor = torch.cat(lidar_tensors, dim=0)
-    s2_tensor = torch.cat(s2_tensors + [yield_mask], dim=0)
+    s2_tensor = torch.cat(s2_tensors, dim=0)
 
     shape_dict = {"lidar" : LIDAR_SIZE,
                     "s2" : S2_SIZE,
+                    "hmask" : TARGET_SIZE,
                     "hrvst" : TARGET_SIZE,
                     }
-    
-    for data_type, final_tensor in zip(['lidar', 's2', 'hrvst'], [lidar_tensor, s2_tensor, hrvst_tensor]):
+
+    for data_type, final_tensor in zip(['lidar', 's2', 'hmask', 'hrvst'], [lidar_tensor, s2_tensor, hmask_tensor, hrvst_tensor]):
         if data_type in shape_dict:
             expected_shape = shape_dict[data_type]
             if list(final_tensor.shape) != expected_shape:
@@ -143,6 +142,6 @@ def load_field(field_path, output_path, dtype=torch.float32):
 
 
 if __name__ == "__main__":
-    # load_dataset(folder_path, save_path, max_workers=24)
+    load_dataset(folder_path, save_path, max_workers=96)
     # make_completed_tensors(save_path)
-    check_incomplete_tensors(folder_path, save_path)
+    # check_incomplete_tensors(folder_path, save_path)
