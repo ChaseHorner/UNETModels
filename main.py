@@ -13,7 +13,7 @@ from visualize_predictions import visualize_predictions
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-dataset = FieldDataset("data/ten_samples", input_keys=configs.INPUT_KEYS)
+dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS)
 
 train_size = int(configs.TRAIN_VAL_SPLIT * len(dataset))
 val_size = len(dataset) - train_size
