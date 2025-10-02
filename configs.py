@@ -38,7 +38,7 @@ TRAIN_VAL_SPLIT = 0.8
 
 # ===== Inputs ======
 
-INPUT_KEYS = ['lidar', 'sentinel', 'hmask']  # Options: 'lidar', 'sentinel', 'pre_season', 'in_season'
+INPUT_KEYS = ['lidar', 'sentinel', 'hmask']  # Options: 'lidar', 'sentinel', 'pre_season', 'in_season', 'hmask'
 
 #Target Info
 TARGET_SIZE = [1, 256, 256]
