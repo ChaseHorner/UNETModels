@@ -6,7 +6,7 @@ import configs
 import time
 
 class FieldDataset(Dataset):
-    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season'], target_key='hrvst'):
+    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'hmask'], target_key='hrvst'):
         '''
         root_dir: folder with subfolders per sample, each containing .pt files
         input_keys: list of keys for input tensors        '''
@@ -32,12 +32,11 @@ class FieldDataset(Dataset):
         features = {
 
         'lidar' : torch.load(os.path.join(sample_dir, 'lidar.pt')),
-        'sentinel' : torch.load(os.path.join(sample_dir, 'sentinel.pt')),
+        'sentinel' : torch.load(os.path.join(sample_dir, 's2.pt')),
         # 'weather_in_season' : torch.load(os.path.join(sample_dir, 'in_season.pt')),  
         # 'weather_pre_season' : torch.load(os.path.join(sample_dir, 'pre_season.pt')),
-        'weather_in_season' : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS]),
-        'weather_pre_season' : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.PRE_SEASON_DAYS]),
         'target' : torch.load(os.path.join(sample_dir, self.target_key + '.pt')),
+        'hmask' : torch.load(os.path.join(sample_dir, 'hmask.pt')),
         'field_year' : sample_dir.split(os.sep)[-2] + '_' + sample_dir.split(os.sep)[-1]
         }
 

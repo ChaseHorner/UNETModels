@@ -11,33 +11,42 @@ from data_pipeline.data_loader import FieldDataset
 from visualize_predictions import visualize_predictions
 
 
+print("Imports complete")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-dataset = FieldDataset("data/ten_samples", input_keys=['lidar', 'sentinel'])
+dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS)
+print(f"Dataset loaded with {len(dataset)} samples")
 
-train_size = int(0.8 * len(dataset))
+train_size = int(configs.TRAIN_VAL_SPLIT * len(dataset))
 val_size = len(dataset) - train_size
 train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
 train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
+print(f"DataLoader created with {len(train_loader)} training batches and {len(val_loader)} validation batches")
+
 
 unet_model = unet.Unet()
 unet_model.to(device)  
 
 criterion = nn.L1Loss()
-optimizer = optim.AdamW(unet_model.parameters(), lr=1e-4, betas=[0.5,0.999])
-EPOCHS = 40
+optimizer = optim.AdamW(unet_model.parameters(), lr=configs.LEARNING_RATE, betas=[configs.BETA1, 0.999])
 
-model_folder = './UNET_2'
-os.makedirs(model_folder, exist_ok = True)
-MODEL_NAME = 'unet_2'
+os.makedirs(configs.MODEL_FOLDER, exist_ok=True)
 
 print("\n===============================\n")
-print(f"Training on {device} for {EPOCHS} epochs...")
-metrics = train_model(
-    unet_model, MODEL_NAME, model_folder, optimizer, criterion, train_loader, val_loader, EPOCHS, device)
+print(f"Training on {device} for {configs.EPOCHS} epochs...")
+metrics = train_model(unet_model, 
+                        configs.MODEL_NAME, 
+                        configs.MODEL_FOLDER, 
+                        optimizer, 
+                        criterion, 
+                        train_loader, 
+                        val_loader, 
+                        configs.EPOCHS, 
+                        device,
+                        accu = True)
 
 
-chart_metrics(metrics, model_folder, EPOCHS)
-visualize_predictions(unet_model, model_folder, MODEL_NAME, dataset.with_field_year(), num_images=2, device=device)
+chart_metrics(metrics, configs.MODEL_FOLDER, configs.EPOCHS)
+visualize_predictions(unet_model, configs.MODEL_FOLDER, configs.MODEL_NAME, dataset.with_field_year(), num_images=2)

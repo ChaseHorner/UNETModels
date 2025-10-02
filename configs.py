@@ -1,5 +1,19 @@
 import datetime
 
+# ====== Model =======
+MODEL_NAME = 'UNET_v0' # The name of the model, used for saving/loading
+MODEL_FOLDER = './outputs/UNET_v0' # The folder where model checkpoints and logs will be saved
+
+BASE_MODEL = 'Unet'  # 'UNet' or 'Ynet'
+DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors'
+
+#Model description
+''' 
+Write here a short description of the model architecture,
+any special layers, or anything else that might be useful to know
+'''
+
+#Model Info
 C0 = 32
 C1 = 64
 C2 = 128
@@ -9,14 +23,29 @@ C5 = 1024
 C6 = 2048
 C7 = 4096
 
+BATCH_SIZE = 2
+ACCUMULATION_STEPS = 4
+EPOCHS = 40
+
+#Not implemented yet
+CRITERION = 'L1'
+OPTIMIZER = 'AdamW'
+LEARNING_RATE = 1e-4
+BETA1 = 0.5
+
+TRAIN_VAL_SPLIT = 0.8
+
+
+# ===== Inputs ======
+
+INPUT_KEYS = ['lidar', 'sentinel', 'hmask']  # Options: 'lidar', 'sentinel', 'pre_season', 'in_season'
+
 #Target Info
 TARGET_SIZE = [1, 256, 256]
 
 #Lidar Info
 LIDAR_IN_CHANNELS = L1 = 5
-LIDAR_OUT_CHANNELS = C1
 LIDAR_SIZE = [L1, 2560, 2560]
-
 
 #Sentinel Info
 SEN_BANDS = 11
@@ -54,5 +83,3 @@ W1 = 10
 W2 = 1
 
 BOTTLENECK_SIZE = [8, 8]
-BATCH_SIZE = 1
-ACCUMULATION_STEPS = 8
