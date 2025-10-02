@@ -10,7 +10,7 @@ def weighted_l1_loss(predictions, target, mask, weight = 1.0):
     """
 
     #TODO FIX THIS ONCE MASKS ARE FIXED
-    weights = torch.where(mask == 0, weight, 0.0)
+    weights = torch.where(mask == 0.0, weight, 0.0)
 
     l1_diff = torch.abs(predictions - target)
     
@@ -24,7 +24,7 @@ def weighted_PSNR(predictions, target, mask, weight = 1.0, data_range=200.0):
     Calculates the Weighted Peak Signal-to-Noise Ratio (WPSNR).
     """
     #TODO FIX THIS ONCE MASKS ARE FIXED
-    weights = torch.where(mask == 0, weight, 0.0)
+    weights = torch.where(mask == 0.0, weight, 0.0)
 
     # Calculate squared error
     squared_error = (predictions - target) ** 2
@@ -51,7 +51,7 @@ def cropped_SSIM(predictions, target, mask, data_range=200.0):
     Calculates SSIM on the bounding box of the mask.
     """
     mask = mask.to(predictions.device)
-    mask = torch.where(mask == 0, 1.0, 0.0)
+    mask = torch.where(mask == 0.0, 1.0, 0.0)
     if mask.sum() == 0:
         return torch.tensor(0.0, device=predictions.device)
 
