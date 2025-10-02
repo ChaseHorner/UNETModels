@@ -3,6 +3,7 @@ import torch
 import rasterio
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
+from tqdm import tqdm
 
 
 folder_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_dat_jk"
@@ -59,7 +60,8 @@ def load_dataset(folder_path, save_path, completed_file="completed_tensors.txt",
 
     # Run in parallel
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        executor.map(lambda args: load_field(*args), tasks)
+        for _ in tqdm(executor.map(lambda args: load_field(*args), tasks), total=len(tasks)):
+            pass
 
 
 
