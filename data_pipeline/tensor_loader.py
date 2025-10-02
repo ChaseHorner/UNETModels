@@ -11,7 +11,7 @@ save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors"
 
 TARGET_SIZE = [1, 256, 256]
 LIDAR_SIZE = [5, 2560, 2560]
-S2_SIZE = [231, 256, 256]  # 11 bands * 21 periods + 1 yield mask
+S2_SIZE = [232, 256, 256]  # 11 bands * 21 periods + 1 yield mask
 
 
 def make_completed_tensors(save_path):
@@ -29,6 +29,23 @@ def make_completed_tensors(save_path):
     with open(os.path.join(os.path.dirname(__file__), "completed_tensors.txt"), "w") as f:
         for item in completed_tensors:
             f.write(item + "\n")
+
+def check_incomplete_tensors(folder_path, save_path):
+    make_completed_tensors(save_path)
+    completed_path = os.path.join(os.path.dirname(__file__), "completed_tensors.txt")
+    with open(completed_path, "r") as f:
+        completed = {line.strip() for line in f}
+
+    # Check for incomplete tensors
+    for year in os.listdir(folder_path):
+        year_path = os.path.join(folder_path, year)
+        if not os.path.isdir(year_path):
+            continue
+        for field in os.listdir(year_path):
+            field_path = os.path.join(year_path, field)
+            if os.path.isdir(field_path):
+                if f"{year}/{field}" not in completed:
+                    print(f"Incomplete tensor found: {year}/{field}")
 
 
 def load_dataset(folder_path, save_path, completed_file="completed_tensors.txt", max_workers=8):
@@ -60,10 +77,11 @@ def load_dataset(folder_path, save_path, completed_file="completed_tensors.txt",
 
     # Run in parallel
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        for _ in tqdm(executor.map(lambda args: load_field(*args), tasks), total=len(tasks)):
+        for _ in tqdm(executor.map(_load_field_wrapper, tasks), total=len(tasks)):
             pass
 
-
+def _load_field_wrapper(args):
+    return load_field(*args)
 
 def load_field(field_path, output_path, dtype=torch.float32):
     lidar_tensors = []
@@ -121,9 +139,10 @@ def load_field(field_path, output_path, dtype=torch.float32):
         os.makedirs(output_path, exist_ok=True)
         save_file = os.path.join(output_path, f"{data_type}.pt")
         torch.save(final_tensor, save_file)
-        print(f"Saved {save_file}, shape {final_tensor.shape}")
+        print(f"Saved {save_file}, shape {final_tensor.shape}", end="\r")
 
 
 if __name__ == "__main__":
-    load_dataset(folder_path, save_path, max_workers=24)
+    # load_dataset(folder_path, save_path, max_workers=24)
     # make_completed_tensors(save_path)
+    check_incomplete_tensors(folder_path, save_path)
