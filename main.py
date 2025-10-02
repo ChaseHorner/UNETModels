@@ -1,8 +1,8 @@
 import torch
 from torch.utils.data import DataLoader, random_split
 from chart_metrics import chart_metrics
-import configs
-import models.unet as unet
+from . import configs
+from models import model
 from torch import nn
 import os
 import torch.optim as optim
@@ -13,7 +13,7 @@ from visualize_predictions import visualize_predictions
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-dataset = FieldDataset("data/ten_samples", input_keys=configs.INPUT_KEYS)
+dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS)
 
 train_size = int(configs.TRAIN_VAL_SPLIT * len(dataset))
 val_size = len(dataset) - train_size
@@ -22,7 +22,7 @@ train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
 
-unet_model = unet.Unet()
+unet_model = model.Unet()
 unet_model.to(device)  
 
 criterion = nn.L1Loss()

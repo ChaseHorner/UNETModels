@@ -1,5 +1,5 @@
 from models.components.final_output import FinalOutput
-import configs
+from . import configs
 import torch
 
 def test_final_output():

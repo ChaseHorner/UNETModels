@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
-import configs
+from . import configs
 
 from models.components.encoder import Encoder
 from models.components.decoder import Decoder
 from models.components.convblock import ConvBlock
 
-class Unet(nn.Module):
+class Model(nn.Module):
     def __init__(
             self, 
             lidar_channels = configs.LIDAR_IN_CHANNELS, 
@@ -15,7 +15,7 @@ class Unet(nn.Module):
             config = configs
             ):
 
-        super(Unet, self).__init__()
+        super(Model, self).__init__()
 
         self.lidar_channels = lidar_channels
         self.sentinel_channels = sentinel_channels

@@ -4,8 +4,8 @@ import datetime
 MODEL_NAME = 'UNET_2' # The name of the model, used for saving/loading
 MODEL_FOLDER = './UNET_2' # The folder where model checkpoints and logs will be saved
 
-BASE_MODEL = 'Unet'  # 'UNet' or 'Ynet'
-DATASET = 'ten_samples'  # 'ten_samples' or 'all_fields'
+BASE_MODEL = 'unet'  # 'unet' or 'ynet'
+DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors'
 
 #Model description
 ''' 

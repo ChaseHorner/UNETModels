@@ -1,5 +1,5 @@
 from models.components.weather_compression import WeatherCompression
-import configs
+from . import configs
 import torch
 
 

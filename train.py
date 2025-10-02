@@ -2,7 +2,7 @@ import time
 import torch
 from torcheval.metrics.functional import peak_signal_noise_ratio
 from torchmetrics.image import StructuralSimilarityIndexMeasure
-import configs
+from . import configs
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=200.0, accu=False):
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
