@@ -24,7 +24,7 @@ def make_completed_tensors(save_path):
                 files = os.listdir(field_path)
                 if all(f"{dt}.pt" in files for dt in ["lidar", "s2", "hrvst"]):
                     completed_tensors.append(f"{year}/{field}")
-    with open("completed_tensors.txt", "w") as f:
+    with open(os.path.join(os.path.dirname(__file__), "completed_tensors.txt"), "w") as f:
         for item in completed_tensors:
             f.write(item + "\n")
 
@@ -39,7 +39,7 @@ def load_dataset(folder_path, save_path):
             field_path = os.path.join(year_path, field)
             if os.path.isdir(field_path):
 
-                with open("completed_tensors.txt", "r") as f:
+                with open(os.path.join(os.path.dirname(__file__), "completed_tensors.txt"), "r") as f:
                     completed = {line.strip() for line in f}
                 if f"{year}/{field}" in completed:
                     continue
