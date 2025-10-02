@@ -3,6 +3,7 @@ import torch
 from torcheval.metrics.functional import peak_signal_noise_ratio
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 import configs
+from objective_functions import weighted_psnr_loss
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=200.0, accu=False):
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
@@ -18,6 +19,7 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
         target = inputs.pop("target")
         predictions = model(**inputs) 
 
+        
         loss = criterion(predictions, target)
 
         if accu:
