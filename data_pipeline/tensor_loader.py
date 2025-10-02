@@ -5,9 +5,24 @@ import numpy as np
 from .. import configs
 
 
-folder_path = r"z:\prepped_data\training_dat_jk"
-save_path = r"Z:\prepped_data\training_tensors"
+folder_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_dat_jk"
+save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors"
 
+def make_completed_tensors(save_path):
+    completed_tensors = []
+    for year in os.listdir(save_path):
+        year_path = os.path.join(save_path, year)
+        if not os.path.isdir(year_path):
+            continue
+        for field in os.listdir(year_path):
+            field_path = os.path.join(year_path, field)
+            if os.path.isdir(field_path):
+                files = os.listdir(field_path)
+                if all(f"{dt}.pt" in files for dt in ["lidar", "s2", "hrvst"]):
+                    completed_tensors.append(f"{year}/{field}")
+    with open("completed_tensors.txt", "w") as f:
+        for item in completed_tensors:
+            f.write(item + "\n")
 
 
 def load_dataset(folder_path, save_path):
@@ -19,6 +34,13 @@ def load_dataset(folder_path, save_path):
         for field in os.listdir(year_path):
             field_path = os.path.join(year_path, field)
             if os.path.isdir(field_path):
+
+                if "completed_tensors.txt" in os.listdir("."):
+                    with open("completed_tensors.txt", "r") as f:
+                        completed = {line.strip() for line in f}
+                    if f"{year}/{field}" in completed:
+                        continue
+
                 output_path = os.path.join(save_path, year, field)
                 load_field(field_path, output_path)
 
@@ -83,4 +105,5 @@ def load_field(field_path, output_path, dtype=torch.float32):
 
 
 if __name__ == "__main__":
-    load_dataset(folder_path, save_path)
+    # load_dataset(folder_path, save_path)
+    make_completed_tensors(save_path)
