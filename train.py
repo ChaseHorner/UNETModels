@@ -1,12 +1,9 @@
 import time
 import torch
-from torcheval.metrics.functional import peak_signal_noise_ratio
-from torchmetrics.image import StructuralSimilarityIndexMeasure
 import configs
-from objective_functions import weighted_psnr_loss
+from objective_functions import weighted_l1_loss, weighted_PSNR, cropped_SSIM
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=200.0, accu=False):
-    ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
     model.train()
     running_loss, running_psnr, running_ssim = 0.0, 0.0, 0.0
 
@@ -20,7 +17,7 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
         predictions = model(**inputs) 
 
         
-        loss = criterion(predictions, target)
+        loss = weighted_l1_loss(predictions, target, inputs.get('hmask'), weight=1.0)
 
         if accu:
             scaled_loss = loss / configs.ACCUMULATION_STEPS
@@ -37,8 +34,8 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
 
 
         running_loss += loss.item()
-        running_psnr += peak_signal_noise_ratio(predictions, target, data_range=data_range).item()
-        running_ssim += ssim_metric(predictions, target).item()
+        running_psnr += weighted_PSNR(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+        running_ssim += cropped_SSIM(predictions, target, inputs.get('hmask'), data_range=data_range).item()
 
         print(f"Training Step [{step+1}/{len(train_dataloader)}]", end="\r")
 
@@ -56,7 +53,6 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
 
 
 def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200.0):
-    ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
     model.eval()
     total_psnr, total_ssim, total_count = 0, 0, 0
     losses = []
@@ -68,14 +64,13 @@ def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200.0)
             target = inputs.pop("target")
             predictions = model(**inputs) 
 
-            loss = criterion(predictions, target)
 
-            loss = criterion(predictions, target)
+            loss = weighted_l1_loss(predictions, target, inputs.get('hmask'), weight=1.0)
             losses.append(loss.item())
 
 
-            total_psnr +=  peak_signal_noise_ratio(predictions, target, data_range=data_range).item()
-            total_ssim += ssim_metric(predictions, target).item()
+            total_psnr +=  weighted_PSNR(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+            total_ssim += cropped_SSIM(predictions, target, inputs.get('hmask'), data_range=data_range).item()
             total_count += 1
 
     epoch_psnr = total_psnr / total_count
