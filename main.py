@@ -44,7 +44,8 @@ metrics = train_model(unet_model,
                         train_loader, 
                         val_loader, 
                         configs.EPOCHS, 
-                        device)
+                        device,
+                        accu = True)
 
 
 chart_metrics(metrics, configs.MODEL_FOLDER, configs.EPOCHS)
