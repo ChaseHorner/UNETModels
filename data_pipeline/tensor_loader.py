@@ -2,11 +2,15 @@ import os
 import torch
 import rasterio
 import numpy as np
-from .. import configs
 
 
 folder_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_dat_jk"
 save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors"
+
+TARGET_SIZE = [1, 256, 256]
+LIDAR_SIZE = [5, 2560, 2560]
+S2_SIZE = [231, 256, 256]  # 11 bands * 21 periods + 1 yield mask
+
 
 def make_completed_tensors(save_path):
     completed_tensors = []
@@ -35,11 +39,10 @@ def load_dataset(folder_path, save_path):
             field_path = os.path.join(year_path, field)
             if os.path.isdir(field_path):
 
-                if "completed_tensors.txt" in os.listdir("."):
-                    with open("completed_tensors.txt", "r") as f:
-                        completed = {line.strip() for line in f}
-                    if f"{year}/{field}" in completed:
-                        continue
+                with open("completed_tensors.txt", "r") as f:
+                    completed = {line.strip() for line in f}
+                if f"{year}/{field}" in completed:
+                    continue
 
                 output_path = os.path.join(save_path, year, field)
                 load_field(field_path, output_path)
@@ -86,9 +89,9 @@ def load_field(field_path, output_path, dtype=torch.float32):
     lidar_tensor = torch.cat(lidar_tensors, dim=0)
     s2_tensor = torch.cat(s2_tensors + [yield_mask], dim=0)
 
-    shape_dict = {"lidar" : configs.LIDAR_SIZE,
-                    "s2" : configs.SEN_SIZE,
-                    "hrvst" : configs.TARGET_SIZE,
+    shape_dict = {"lidar" : LIDAR_SIZE,
+                    "s2" : S2_SIZE,
+                    "hrvst" : TARGET_SIZE,
                     }
     
     for data_type, final_tensor in zip(['lidar', 's2', 'hrvst'], [lidar_tensor, s2_tensor, hrvst_tensor]):
