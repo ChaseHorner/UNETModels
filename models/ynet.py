@@ -11,7 +11,6 @@ class Ynet(nn.Module):
     def __init__(
             self, 
             lidar_channels = configs.LIDAR_IN_CHANNELS, 
-            sentinel_channels = configs.S1, 
             weather_channels = configs.WEATHER_IN_CHANNELS, 
             output_channels=1,
             config = configs
@@ -20,7 +19,6 @@ class Ynet(nn.Module):
         super(Ynet, self).__init__()
 
         self.lidar_channels = lidar_channels
-        self.sentinel_channels = sentinel_channels
         self.weather_channels = weather_channels
         self.output_channels = output_channels
 
@@ -46,26 +44,27 @@ class Ynet(nn.Module):
 
     def forward(self, **kwargs):
         x = kwargs.get('lidar')  # (b, lidar_channels, H, W) also called i1 or x1
-        i2 = kwargs.get('sentinel')
-        i3 = self.in_weather_in_season(kwargs.get('weather_in_season'))
-        i4 = self.in_weather_pre_season(kwargs.get('weather_out_season'))
+        s2_data = kwargs.get('sentinel')
+        hmask = kwargs.get('hmask')
+        in_weather = self.in_weather_in_season(kwargs.get('weather_in_season'))
+        pre_weather = self.in_weather_pre_season(kwargs.get('weather_out_season'))
 
         x = self.initial_conv(x)
         x = self.enc_1(x)
         x = self.enc_2(x)
 
-        x2 = torch.cat([x, i2], dim=1)
+        x2 = torch.cat([x, s2_data, hmask], dim=1)
         x3 = self.enc_3(x2)
         x4 = self.enc_4(x3)
         x5 = self.enc_5(x4)
         x6 = self.enc_6(x5)
         x7 = self.enc_7(x6)
 
-        i3 = i3.unsqueeze(-1).unsqueeze(-1)
-        i4 = i4.unsqueeze(-1).unsqueeze(-1)
-        i3 = i3.expand(-1, -1, x7.shape[2], x7.shape[3])
-        i4 = i4.expand(-1, -1, x7.shape[2], x7.shape[3])
-        x7 = torch.cat([x7, i3, i4], dim=1)
+        in_weather = in_weather.unsqueeze(-1).unsqueeze(-1)
+        pre_weather = pre_weather.unsqueeze(-1).unsqueeze(-1)
+        in_weather = in_weather.expand(-1, -1, x7.shape[2], x7.shape[3])
+        pre_weather = pre_weather.expand(-1, -1, x7.shape[2], x7.shape[3])
+        x7 = torch.cat([x7, in_weather, pre_weather], dim=1)
 
         x = self.dec_7(x7, x6)
         x = self.dec_6(x, x5)
