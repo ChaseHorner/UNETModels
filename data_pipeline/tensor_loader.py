@@ -2,6 +2,7 @@ import os
 import torch
 import rasterio
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 
 
 folder_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_dat_jk"
@@ -29,23 +30,37 @@ def make_completed_tensors(save_path):
             f.write(item + "\n")
 
 
-def load_dataset(folder_path, save_path):
+def load_dataset(folder_path, save_path, completed_file="completed_tensors.txt", max_workers=8):
+    completed_path = os.path.join(os.path.dirname(__file__), completed_file)
+    if os.path.exists(completed_path):
+        with open(completed_path, "r") as f:
+            completed = {line.strip() for line in f}
+    else:
+        completed = set()
+
+    tasks = []
     for year in os.listdir(folder_path):
-        if not os.path.isdir(os.path.join(folder_path, year)):
+        year_path = os.path.join(folder_path, year)
+        if not os.path.isdir(year_path):
             continue
 
-        year_path = os.path.join(folder_path, year)
         for field in os.listdir(year_path):
             field_path = os.path.join(year_path, field)
-            if os.path.isdir(field_path):
+            if not os.path.isdir(field_path):
+                continue
 
-                with open(os.path.join(os.path.dirname(__file__), "completed_tensors.txt"), "r") as f:
-                    completed = {line.strip() for line in f}
-                if f"{year}/{field}" in completed:
-                    continue
+            if f"{year}/{field}" in completed:
+                continue
 
-                output_path = os.path.join(save_path, year, field)
-                load_field(field_path, output_path)
+            output_path = os.path.join(save_path, year, field)
+            tasks.append((field_path, output_path))
+
+    print(f"🔄 Processing {len(tasks)} fields with {max_workers} workers...")
+
+    # Run in parallel
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        executor.map(lambda args: load_field(*args), tasks)
+
 
 
 def load_field(field_path, output_path, dtype=torch.float32):
@@ -108,5 +123,5 @@ def load_field(field_path, output_path, dtype=torch.float32):
 
 
 if __name__ == "__main__":
-    # load_dataset(folder_path, save_path)
-    make_completed_tensors(save_path)
+    load_dataset(folder_path, save_path, max_workers=24)
+    # make_completed_tensors(save_path)
