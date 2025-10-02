@@ -58,11 +58,12 @@ def cropped_SSIM(predictions, target, mask, data_range=200.0):
     # Find bounding box
     non_zero = torch.nonzero(mask)
     min_coords = non_zero.min(dim=0)[0]
-    max_coords = non_zero.max(dim=0)[0] + 1
-    slices = tuple(slice(min_c.item(), max_c.item()) for min_c, max_c in zip(min_coords, max_coords))
+    max_coords = non_zero.max(dim=0)[0] + 1  # + 1 because slicing is exclusive
 
-    cropped_pred = predictions[:, :, slices[0], slices[1]]
-    cropped_target = target[:, :, slices[0], slices[1]]
+    slices = tuple(slice(min_coords[i], max_coords[i]) for i in range(len(min_coords)))
+
+    cropped_pred = predictions[slices]
+    cropped_target = target[slices]
 
     # Calculate SSIM
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(predictions.device)
