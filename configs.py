@@ -2,7 +2,7 @@ import datetime
 
 # ====== Model =======
 MODEL_NAME = 'UNET_v0' # The name of the model, used for saving/loading
-MODEL_FOLDER = './UNET_v0' # The folder where model checkpoints and logs will be saved
+MODEL_FOLDER = './outputs/UNET_v0' # The folder where model checkpoints and logs will be saved
 
 BASE_MODEL = 'Unet'  # 'UNet' or 'Ynet'
 DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors'

@@ -32,7 +32,7 @@ class FieldDataset(Dataset):
         features = {
 
         'lidar' : torch.load(os.path.join(sample_dir, 'lidar.pt')),
-        'sentinel' : torch.load(os.path.join(sample_dir, 'sentinel.pt')),
+        'sentinel' : torch.load(os.path.join(sample_dir, 's2.pt')),
         # 'weather_in_season' : torch.load(os.path.join(sample_dir, 'in_season.pt')),  
         # 'weather_pre_season' : torch.load(os.path.join(sample_dir, 'pre_season.pt')),
         'weather_in_season' : torch.zeros([configs.WEATHER_IN_CHANNELS, configs.IN_SEASON_DAYS]),

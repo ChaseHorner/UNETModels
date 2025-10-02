@@ -11,9 +11,11 @@ from data_pipeline.data_loader import FieldDataset
 from visualize_predictions import visualize_predictions
 
 
+print("Imports complete")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS)
+print(f"Dataset loaded with {len(dataset)} samples")
 
 train_size = int(configs.TRAIN_VAL_SPLIT * len(dataset))
 val_size = len(dataset) - train_size
@@ -21,6 +23,8 @@ train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
 train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
+print(f"DataLoader created with {len(train_loader)} training batches and {len(val_loader)} validation batches")
+
 
 unet_model = unet.Unet()
 unet_model.to(device)  
