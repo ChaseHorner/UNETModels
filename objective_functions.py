@@ -9,8 +9,7 @@ def weighted_l1_loss(predictions, target, mask, weight = 1.0):
     This returns the SUM of weighted errors.
     """
 
-    #TODO FIX THIS ONCE MASKS ARE FIXED
-    weights = torch.where(mask == 0.0, weight, 0.0)
+    weights = torch.where(mask == 1.0, weight, 0.0)
 
     l1_diff = torch.abs(predictions - target)
     
@@ -23,8 +22,7 @@ def weighted_PSNR(predictions, target, mask, weight = 1.0, data_range=200.0):
     """
     Calculates the Weighted Peak Signal-to-Noise Ratio (WPSNR).
     """
-    #TODO FIX THIS ONCE MASKS ARE FIXED
-    weights = torch.where(mask == 0.0, weight, 0.0)
+    weights = torch.where(mask == 1.0, weight, 0.0)
 
     # Calculate squared error
     squared_error = (predictions - target) ** 2
@@ -51,18 +49,19 @@ def cropped_SSIM(predictions, target, mask, data_range=200.0):
     Calculates SSIM on the bounding box of the mask.
     """
     mask = mask.to(predictions.device)
-    mask = torch.where(mask == 0.0, 1.0, 0.0)
+    mask = torch.where(mask == 1.0, 1.0, 0.0)
     if mask.sum() == 0:
         return torch.tensor(0.0, device=predictions.device)
 
     # Find bounding box
     non_zero = torch.nonzero(mask)
     min_coords = non_zero.min(dim=0)[0]
-    max_coords = non_zero.max(dim=0)[0] + 1
-    slices = tuple(slice(min_c.item(), max_c.item()) for min_c, max_c in zip(min_coords, max_coords))
+    max_coords = non_zero.max(dim=0)[0] + 1  # + 1 because slicing is exclusive
 
-    cropped_pred = predictions[:, :, slices[0], slices[1]]
-    cropped_target = target[:, :, slices[0], slices[1]]
+    slices = tuple(slice(min_coords[i], max_coords[i]) for i in range(len(min_coords)))
+
+    cropped_pred = predictions[slices]
+    cropped_target = target[slices]
 
     # Calculate SSIM
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(predictions.device)

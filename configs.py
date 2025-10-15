@@ -1,16 +1,17 @@
 import datetime
 
 # ====== Model =======
-MODEL_NAME = 'UNET_v0' # The name of the model, used for saving/loading
-MODEL_FOLDER = './outputs/UNET_v0' # The folder where model checkpoints and logs will be saved
+MODEL_NAME = 'UNET_v0.3' # The name of the model, used for saving/loading
+MODEL_FOLDER = './outputs/UNET_v0.3' # The folder where model checkpoints and logs will be saved
 
 BASE_MODEL = 'Unet'  # 'UNet' or 'Ynet'
-DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors'
+DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2'
 
 #Model description
 ''' 
-Write here a short description of the model architecture,
-any special layers, or anything else that might be useful to know
+Medium learning rate
+Reduced effective batch size to 8
+100 epochs
 '''
 
 #Model Info
@@ -25,15 +26,15 @@ C7 = 4096
 
 BATCH_SIZE = 2
 ACCUMULATION_STEPS = 4
-EPOCHS = 40
+EPOCHS = 100
 
 #Not implemented yet
 CRITERION = 'L1'
 OPTIMIZER = 'AdamW'
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 1e-3
 BETA1 = 0.5
 
-TRAIN_VAL_SPLIT = 0.8
+TRAIN_VAL_SPLIT = 0.85
 
 
 # ===== Inputs ======

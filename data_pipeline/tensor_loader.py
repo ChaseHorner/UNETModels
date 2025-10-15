@@ -6,8 +6,8 @@ from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 
 
-folder_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_dat_jk"
-save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors"
+folder_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_dat_drylnd_jk"
+save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_"
 
 TARGET_SIZE = [1, 256, 256]
 LIDAR_SIZE = [5, 2560, 2560]
@@ -103,24 +103,31 @@ def load_field(field_path, output_path, dtype=torch.float32):
                             arr = arr[None, :, :]  # add channel dimension
                         hmask_tensor = torch.from_numpy(arr).type(dtype)
 
-            elif file.endswith('.tif'):
+            elif "hrvst" in file and file.endswith('.tif'):
+                with rasterio.open(file_path) as src:
+                        arr = src.read().astype(np.float32)
+                        if arr.ndim == 2:
+                            arr = arr[None, :, :]  # add channel dimension
+                        hrvst_tensor = torch.from_numpy(arr).type(dtype)
+
+            elif file.endswith('.tif') and data_type == 's2':
                 with rasterio.open(file_path) as src:
                     arr = src.read().astype(np.float32)
                     if arr.ndim == 2:
                         arr = arr[None, :, :]  # add channel dimension
                     tensor = torch.from_numpy(arr).type(dtype)
-                
-                    if data_type == 'lidar':
-                        lidar_tensors.append(tensor)
-                    elif data_type == 's2':
-                        s2_tensors.append(tensor)
-                    elif data_type == 'hrvst':
-                        hrvst_tensor = tensor
-                    else:
-                        print(f"Unknown data type {data_type} in {field_path}, skipping {file_path}")
+                    s2_tensors.append(tensor)
 
-    lidar_tensor = torch.cat(lidar_tensors, dim=0)
+            elif file.endswith('.tif') and data_type == 'lidar':
+                with rasterio.open(file_path) as src:
+                    arr = src.read().astype(np.float32)
+                    if arr.ndim == 2:
+                        arr = arr[None, :, :]  # add channel dimension
+                    tensor = torch.from_numpy(arr).type(dtype)
+                    lidar_tensors.append(tensor)
+
     s2_tensor = torch.cat(s2_tensors, dim=0)
+    lidar_tensor = torch.cat(lidar_tensors, dim=0)
 
     shape_dict = {"lidar" : LIDAR_SIZE,
                     "s2" : S2_SIZE,
