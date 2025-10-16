@@ -5,6 +5,8 @@ import numpy as np
 
 import os
 
+import configs
+
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def visualize_predictions(model, model_folder, model_name, dataset, num_images=3):
@@ -21,6 +23,9 @@ def visualize_predictions(model, model_folder, model_name, dataset, num_images=3
     with torch.no_grad():
        for idx in indices:
             batch = dataloader.dataset[idx]
+            # print(f"Visualizing sample {idx} from {batch.get('field_year', 'unknown')}")
+            # print(batch['lidar'].shape, batch['sentinel'].shape, batch['hmask'].shape, batch['target'].shape)
+
             field_year = batch.get('field_year', idx)
 
             inputs = {k: v.unsqueeze(0).to(device) for k, v in batch.items() if k != 'field_year'}
@@ -57,9 +62,9 @@ if __name__ == "__main__":
     from data_pipeline.data_loader import FieldDataset
     import models.unet as unet
 
-    dataset = FieldDataset("data/ten_samples", input_keys=['lidar', 'sentinel']).with_field_year()
-    model_folder = './UNET'
-    MODEL_NAME = 'unet_highest_ssim'  # Change to the desired model variant
+    dataset = FieldDataset(configs.DATASET_PATH).with_field_year()
+    model_folder = './outputs/UNET_v0.3'
+    MODEL_NAME = 'UNET_v0.3_highest_psnr'  # Change to the desired model variant
 
     unet_model = unet.Unet()
     visualize_predictions(unet_model, model_folder, MODEL_NAME, dataset, num_images=2)

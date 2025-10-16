@@ -3,12 +3,12 @@ from torch.utils.data import DataLoader, random_split
 from chart_metrics import chart_metrics
 import configs
 import models.unet as unet
-from torch import nn
 import os
 import torch.optim as optim
 from train import train_model
 from data_pipeline.data_loader import FieldDataset
 from visualize_predictions import visualize_predictions
+from objective_functions import *
 
 
 print("Imports complete")
@@ -29,18 +29,17 @@ print(f"DataLoader created with {len(train_loader)} training batches and {len(va
 unet_model = unet.Unet()
 unet_model.to(device)  
 
-criterion = nn.L1Loss()
 optimizer = optim.AdamW(unet_model.parameters(), lr=configs.LEARNING_RATE, betas=[configs.BETA1, 0.999])
 
 os.makedirs(configs.MODEL_FOLDER, exist_ok=True)
 
 print("\n===============================\n")
-print(f"Training on {device} for {configs.EPOCHS} epochs...")
+print(f"Training {configs.MODEL_NAME} on {device} for {configs.EPOCHS} epochs...")
 metrics = train_model(unet_model, 
                         configs.MODEL_NAME, 
                         configs.MODEL_FOLDER, 
                         optimizer, 
-                        criterion, 
+                        configs.CRITERION, 
                         train_loader, 
                         val_loader, 
                         configs.EPOCHS, 
@@ -49,4 +48,6 @@ metrics = train_model(unet_model,
 
 
 chart_metrics(metrics, configs.MODEL_FOLDER, configs.EPOCHS)
-visualize_predictions(unet_model, configs.MODEL_FOLDER, configs.MODEL_NAME, dataset.with_field_year(), num_images=2)
+
+model_name = configs.MODEL_NAME + '_highest_psnr'
+visualize_predictions(unet_model, configs.MODEL_FOLDER, model_name, dataset.with_field_year(), num_images=2)
