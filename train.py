@@ -1,12 +1,13 @@
 import time
+from flask import json
 import torch
 import configs
-from objective_functions import weighted_l1_loss, weighted_PSNR, cropped_SSIM
+from objective_functions import *
 from torch.nn import L1Loss
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=200.0, accu=False):
     model.train()
-    running_l1, running_weighted_loss, running_psnr, running_ssim = 0.0, 0.0, 0.0, 0.0
+    running_l1, running_wL1, running_cSSIM, running_wPSNR = 0.0, 0.0, 0.0, 0.0
 
     if accu:
         optimizer.zero_grad()
@@ -18,7 +19,7 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
         predictions = model(**inputs) 
 
 
-        loss = weighted_l1_loss(predictions, target, inputs.get('hmask'), weight=1.0)
+        loss = criterion(predictions, target, inputs.get('hmask'))
 
         if accu:
             scaled_loss = loss / configs.ACCUMULATION_STEPS
@@ -35,9 +36,9 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
 
 
         running_l1 += L1Loss()(predictions, target).item()
-        running_weighted_loss += loss.item()
-        running_psnr += weighted_PSNR(predictions, target, inputs.get('hmask'), data_range=data_range).item()
-        running_ssim += cropped_SSIM(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+        running_wL1 += WeightedL1Loss(weight=criterion.weight)(predictions, target, inputs.get('hmask')).item()
+        running_wPSNR += WeightedPSNR(weight=criterion.weight)(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+        running_cSSIM += CroppedSSIM()(predictions, target, inputs.get('hmask'), data_range=data_range).item()
 
         print(f"Training Step [{step+1}/{len(train_dataloader)}]", end="\r")
 
@@ -47,17 +48,17 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
 
 
     num_batches = len(train_dataloader)
-    return (
-        running_psnr / num_batches,
-        running_ssim / num_batches,
-        running_l1 / num_batches,
-        running_weighted_loss / num_batches,
-    )
+    return {
+        "wPSNR": running_wPSNR / num_batches,
+        "cSSIM": running_cSSIM / num_batches,
+        "l1": running_l1 / num_batches,
+        "wL1": running_wL1 / num_batches,
+    }
 
 
 def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200.0):
     model.eval()
-    total_psnr, total_l1, total_ssim, total_count = 0, 0, 0, 0
+    total_wPSNR, total_l1, total_cSSIM, total_wL1, total_count = 0, 0, 0, 0, 0
     losses = []
 
     with torch.no_grad():
@@ -68,20 +69,26 @@ def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200.0)
             predictions = model(**inputs) 
 
 
-            loss = weighted_l1_loss(predictions, target, inputs.get('hmask'), weight=1.0)
+            loss = criterion(predictions, target, inputs.get('hmask'))
             losses.append(loss.item())
 
 
-            total_psnr +=  weighted_PSNR(predictions, target, inputs.get('hmask'), data_range=data_range).item()
-            total_ssim += cropped_SSIM(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+            total_wL1 += WeightedL1Loss(weight=criterion.weight)(predictions, target, inputs.get('hmask')).item()
+            total_wPSNR +=  WeightedPSNR(weight=criterion.weight)(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+            total_cSSIM += CroppedSSIM()(predictions, target, inputs.get('hmask'), data_range=data_range).item()
             total_l1 += L1Loss()(predictions, target).item()
             total_count += 1
 
-    epoch_psnr = total_psnr / total_count
-    epoch_ssim = total_ssim / total_count
-    epoch_wloss = sum(losses) / len(losses)
+    epoch_wPSNR = total_wPSNR / total_count
+    epoch_cSSIM = total_cSSIM / total_count
+    epoch_wl1 = total_wL1 / total_count
     epoch_l1 = total_l1 / total_count
-    return epoch_psnr, epoch_ssim, epoch_l1, epoch_wloss
+    return {
+        "wPSNR": epoch_wPSNR,
+        "cSSIM": epoch_cSSIM,
+        "l1": epoch_l1,
+        "wL1": epoch_wl1
+    }
 
 def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, accu=False, data_range=200.0):
     train_psnrs, train_ssims, train_l1s, train_wlosses = [], [], [], []
@@ -93,48 +100,52 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     for epoch in range(1, num_epochs+1):
         epoch_start_time = time.time()
         # Training
-        train_psnr, train_ssim, train_l1, train_wloss = train_epoch(model, optimizer, criterion, train_dataloader, device, accu=accu, data_range=data_range)
-        train_psnrs.append(to_float(train_psnr))
-        train_ssims.append(to_float(train_ssim))
-        train_l1s.append(to_float(train_l1))
-        train_wlosses.append(to_float(train_wloss))
+        train_metrics = train_epoch(model, optimizer, criterion, train_dataloader, device, accu=accu, data_range=data_range)
+        train_psnrs.append(to_float(train_metrics["wPSNR"]))
+        train_ssims.append(to_float(train_metrics["cSSIM"]))
+        train_l1s.append(to_float(train_metrics["l1"]))
+        train_wlosses.append(to_float(train_metrics["wL1"]))
 
         # Evaluation
-        eval_psnr, eval_ssim, eval_l1, eval_wloss = evaluate_epoch(model, criterion, valid_dataloader, device, data_range=data_range)
-        eval_psnrs.append(to_float(eval_psnr))
-        eval_ssims.append(to_float(eval_ssim))
-        eval_l1s.append(to_float(eval_l1))
-        eval_wlosses.append(to_float(eval_wloss))
+        eval_metrics = evaluate_epoch(model, criterion, valid_dataloader, device, data_range=data_range)
+        eval_psnrs.append(to_float(eval_metrics["wPSNR"]))
+        eval_ssims.append(to_float(eval_metrics["cSSIM"]))
+        eval_l1s.append(to_float(eval_metrics["l1"]))
+        eval_wlosses.append(to_float(eval_metrics["wL1"]))
 
         # Save best model based on eval loss
-        if best_wloss_eval[0] > eval_wloss :
+        if best_wloss_eval[0] > eval_metrics["wL1"]:
             torch.save(model.state_dict(), model_folder + f'/{model_name}_lowest_wloss.pt')
-            best_wloss_eval = (eval_wloss, epoch)
+            best_wloss_eval = (eval_metrics["wL1"], epoch)
         # Save best model based on eval psnr
-        if best_psnr_eval[0] < eval_psnr:
+        if best_psnr_eval[0] < eval_metrics["wPSNR"]:
             torch.save(model.state_dict(), model_folder + f'/{model_name}_highest_psnr.pt')
-            best_psnr_eval = (eval_psnr, epoch)
+            best_psnr_eval = (eval_metrics["wPSNR"], epoch)
         # Save best model based on eval ssim
-        if best_ssim_eval[0] < eval_ssim:
+        if best_ssim_eval[0] < eval_metrics["cSSIM"]:
             torch.save(model.state_dict(), model_folder + f'/{model_name}_highest_ssim.pt')
-            best_ssim_eval = (eval_ssim, epoch)
+            best_ssim_eval = (eval_metrics["cSSIM"], epoch)
         times.append(time.time() - epoch_start_time)
 
 
-        # Print loss, psnr end epoch
+        # Print and log loss at end of epochs
         with open(f"{model_folder}/logs.txt", "a") as f:
+            f.write("-" * 59)
             f.write(
-            "| End of epoch {:3d} | Time: {:5.2f}s | Train psnr {:8.3f} | Train ssim {:8.3f} | Train L1 {:8.3f} | Train wLoss {:8.3f} "
-            "| Valid psnr {:8.3f} | Valid ssim {:8.3f} | Valid L1 {:8.3f} | Valid wLoss {:8.3f} ".format(
-                epoch, time.time() - epoch_start_time, train_psnr, train_ssim, train_l1, train_wloss, eval_psnr, eval_ssim, eval_l1, eval_wloss
+                "| End of epoch {:3d} | Time: {:5.2f}s | Train wPSNR {:8.3f} | Train cSSIM {:8.3f} | Train L1 {:8.3f} | Train wL1 {:8.3f} "
+                "| Eval wPSNR {:8.3f} | Eval cSSIM {:8.3f} | Eval L1 {:8.3f} | Eval wL1 {:8.3f} ".format(
+                    epoch, time.time() - epoch_start_time, train_metrics["wPSNR"], train_metrics["cSSIM"], train_metrics["l1"], train_metrics["wL1"],
+                    eval_metrics["wPSNR"], eval_metrics["cSSIM"], eval_metrics["l1"], eval_metrics["wL1"]
+                )
             )
-            + "\n")
+            f.write("-" * 59)
 
         print("-" * 59)
         print(
-            "| End of epoch {:3d} | Time: {:5.2f}s | Train psnr {:8.3f} | Train ssim {:8.3f} | Train L1 {:8.3f} | Train wLoss {:8.3f} "
-            "| Valid psnr {:8.3f} | Valid ssim {:8.3f} | Valid L1 {:8.3f} | Valid wLoss {:8.3f} ".format(
-                epoch, time.time() - epoch_start_time, train_psnr, train_ssim, train_l1, train_wloss, eval_psnr, eval_ssim, eval_l1, eval_wloss
+            "| End of epoch {:3d} | Time: {:5.2f}s | Train wPSNR {:8.3f} | Train cSSIM {:8.3f} | Train L1 {:8.3f} | Train wL1 {:8.3f} "
+            "| Eval wPSNR {:8.3f} | Eval cSSIM {:8.3f} | Eval L1 {:8.3f} | Eval wL1 {:8.3f} ".format(
+                epoch, time.time() - epoch_start_time, train_metrics["wPSNR"], train_metrics["cSSIM"], train_metrics["l1"], train_metrics["wL1"],
+                eval_metrics["wPSNR"], eval_metrics["cSSIM"], eval_metrics["l1"], eval_metrics["wL1"]
             )
         )
         print("-" * 59)
@@ -145,9 +156,6 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         f.write(f"Best PSNR Epoch: {best_psnr_eval[1]} with PSNR: {best_psnr_eval[0]:.4f}\n")
         f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")
 
-    # Load best model
-    # model.load_state_dict(torch.load(model_folder + f'/{model_name}.pt'))
-    # model.eval()
     metrics = {
         'train_psnr': train_psnrs,
         'train_ssim': train_ssims,
@@ -159,6 +167,11 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         'eval_wloss': eval_wlosses,
         'time': times
     }
+
+    # Save metrics to a JSON file
+    with open(f"outputs/{model_folder}/{model_name}_metrics.json", "w") as f:
+        json.dump(metrics, f)
+
     return metrics
 
 

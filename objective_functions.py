@@ -1,68 +1,69 @@
 import torch
+import torch.nn as nn
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 
 
-def weighted_l1_loss(predictions, target, mask, weight = 1.0):
+class WeightedL1Loss(nn.Module):
     """
-    Calculates the L1 loss with a per-element weight.
-    This returns the SUM of weighted errors.
+    Weighted L1 Loss that applies different weights to masked and unmasked regions.
     """
+    def __init__(self, weight=1.0):
+        super().__init__()
+        self.weight = weight
 
-    weights = torch.where(mask == 1.0, weight, 0.0)
-
-    l1_diff = torch.abs(predictions - target)
+    def forward(self, predictions, target, mask):
+        weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
+        l1_diff = torch.abs(predictions - target)
+        loss = (l1_diff * weights).mean()
+        return loss
     
-    # Apply weights and sum them up
-    loss = (l1_diff * weights).sum()
-    
-    return loss
-
-def weighted_PSNR(predictions, target, mask, weight = 1.0, data_range=200.0):
+class WeightedPSNR(nn.Module):
     """
-    Calculates the Weighted Peak Signal-to-Noise Ratio (WPSNR).
+    Weighted Peak Signal-to-Noise Ratio (WPSNR) that applies different weights to masked and unmasked regions.
     """
-    weights = torch.where(mask == 1.0, weight, 0.0)
+    def __init__(self, weight=1.0, data_range=350.0):
+        super().__init__()
+        self.weight = weight
+        self.data_range = data_range
 
-    # Calculate squared error
-    squared_error = (predictions - target) ** 2
-    
-    # Calculate weighted mean squared error (WMSE)
-    sum_of_weights = torch.sum(weights)
-    if sum_of_weights == 0:
-        return torch.tensor(0.0)
+    def forward(self, predictions, target, mask):
+        weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
+
+        squared_error = (predictions - target) ** 2
+        sum_of_weights = torch.sum(weights)
+        if sum_of_weights == 0:
+            return torch.tensor(0.0, device=predictions.device)
         
-    wmse = torch.sum(weights * squared_error) / sum_of_weights
-    
-    # If WMSE is zero, return infinity
-    if wmse == 0:
-        return torch.tensor(float('inf'))
+        wmse = torch.sum(weights * squared_error) / sum_of_weights
+        wmse = torch.clamp(wmse, min=1e-12)
 
-    # Calculate WPSNR
-    wpsnr_val = 10 * torch.log10((data_range ** 2) / wmse)
-    
-    return wpsnr_val
+        wpsnr_val = 10 * torch.log10((self.data_range ** 2) / wmse)
+        return wpsnr_val
 
-
-def cropped_SSIM(predictions, target, mask, data_range=200.0):
+class CroppedSSIM(nn.Module):
     """
-    Calculates SSIM on the bounding box of the mask.
+    Computes SSIM only over the bounding box of a binary mask.
     """
-    mask = mask.to(predictions.device)
-    mask = torch.where(mask == 1.0, 1.0, 0.0)
-    if mask.sum() == 0:
-        return torch.tensor(0.0, device=predictions.device)
+    def __init__(self, data_range=350.0):
+        super().__init__()
+        self.data_range = data_range
+        self.ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range)
 
-    # Find bounding box
-    non_zero = torch.nonzero(mask)
-    min_coords = non_zero.min(dim=0)[0]
-    max_coords = non_zero.max(dim=0)[0] + 1  # + 1 because slicing is exclusive
+    def forward(self, predictions, target, mask):
+        mask = mask.to(predictions.device)
+        mask = (mask > 0).float()
 
-    slices = tuple(slice(min_coords[i], max_coords[i]) for i in range(len(min_coords)))
+        if mask.sum() == 0:
+            return torch.tensor(0.0, device=predictions.device)
 
-    cropped_pred = predictions[slices]
-    cropped_target = target[slices]
+        # Find bounding box over spatial dimensions (ignore channel dim)
+        y, x = torch.nonzero(mask[0], as_tuple=True)  # take channel 0
+        ymin, ymax = y.min(), y.max() + 1
+        xmin, xmax = x.min(), x.max() + 1
 
-    # Calculate SSIM
-    ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(predictions.device)
-    return ssim_metric(cropped_pred, cropped_target)
+        # Crop along H×W only
+        cropped_pred = predictions[..., ymin:ymax, xmin:xmax]
+        cropped_target = target[..., ymin:ymax, xmin:xmax]
+
+        return self.ssim_metric(cropped_pred, cropped_target)

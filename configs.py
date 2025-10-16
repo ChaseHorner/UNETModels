@@ -1,4 +1,5 @@
 import datetime
+from objective_functions import *
 
 # ====== Model =======
 MODEL_NAME = 'UNET_v0.6' # The name of the model, used for saving/loading
@@ -9,28 +10,36 @@ DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2'
 
 #Model description
 ''' 
-150 epochs
-High learning Rate
-Beta = .9
-Higher Channel Sizes
+Small channel sizes
+weighted L1 with weight 0.9
+beta1 = 0.9
+lr = 1e-2
 '''
 
 #Model Info
-C0 = 64
-C1 = 128
-C2 = 256
-C3 = 512
-C4 = 1024
-C5 = 2000
-C6 = 4000
-C7 = 6000
+# C0 = 64
+# C1 = 128
+# C2 = 256
+# C3 = 512
+# C4 = 1024
+# C5 = 2000
+# C6 = 4000
+# C7 = 6000
+
+C0 = 32
+C1 = 64
+C2 = 128
+C3 = 256
+C4 = 512
+C5 = 1024
+C6 = 2048
+C7 = 4096
 
 BATCH_SIZE = 1
 ACCUMULATION_STEPS = 8
 EPOCHS = 5
 
-#Not implemented yet
-CRITERION = 'L1'
+CRITERION = WeightedL1Loss(weight=0.9)
 OPTIMIZER = 'AdamW'
 LEARNING_RATE = 1e-2
 BETA1 = 0.9
