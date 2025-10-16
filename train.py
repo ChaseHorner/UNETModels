@@ -122,6 +122,14 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
 
         # Print loss, psnr end epoch
+        with open(f"{model_folder}/logs.txt", "a") as f:
+            f.write(
+            "| End of epoch {:3d} | Time: {:5.2f}s | Train psnr {:8.3f} | Train ssim {:8.3f} | Train L1 {:8.3f} | Train wLoss {:8.3f} "
+            "| Valid psnr {:8.3f} | Valid ssim {:8.3f} | Valid L1 {:8.3f} | Valid wLoss {:8.3f} ".format(
+                epoch, time.time() - epoch_start_time, train_psnr, train_ssim, train_l1, train_wloss, eval_psnr, eval_ssim, eval_l1, eval_wloss
+            )
+            + "\n")
+
         print("-" * 59)
         print(
             "| End of epoch {:3d} | Time: {:5.2f}s | Train psnr {:8.3f} | Train ssim {:8.3f} | Train L1 {:8.3f} | Train wLoss {:8.3f} "
@@ -132,8 +140,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         print("-" * 59)
     
     # Save epoch number to a txt file
-
-    with open(f"outputs/{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
+    with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
         f.write(f"Best wLoss Epoch: {best_wloss_eval[1]} with wLoss: {best_wloss_eval[0]:.4f}\n")
         f.write(f"Best PSNR Epoch: {best_psnr_eval[1]} with PSNR: {best_psnr_eval[0]:.4f}\n")
         f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")

@@ -35,7 +35,7 @@ optimizer = optim.AdamW(unet_model.parameters(), lr=configs.LEARNING_RATE, betas
 os.makedirs(configs.MODEL_FOLDER, exist_ok=True)
 
 print("\n===============================\n")
-print(f"Training on {device} for {configs.EPOCHS} epochs...")
+print(f"Training {configs.MODEL_NAME} on {device} for {configs.EPOCHS} epochs...")
 metrics = train_model(unet_model, 
                         configs.MODEL_NAME, 
                         configs.MODEL_FOLDER, 

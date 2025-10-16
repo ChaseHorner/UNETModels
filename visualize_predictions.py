@@ -63,8 +63,8 @@ if __name__ == "__main__":
     import models.unet as unet
 
     dataset = FieldDataset(configs.DATASET_PATH).with_field_year()
-    model_folder = './outputs/UNET_v0.2'
-    MODEL_NAME = 'UNET_v0.2_highest_psnr'  # Change to the desired model variant
+    model_folder = './outputs/UNET_v0.3'
+    MODEL_NAME = 'UNET_v0.3_highest_psnr'  # Change to the desired model variant
 
     unet_model = unet.Unet()
     visualize_predictions(unet_model, model_folder, MODEL_NAME, dataset, num_images=2)
