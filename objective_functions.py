@@ -4,54 +4,40 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 
 
-class WeightedL1Loss(nn.Module):
+class MSE(nn.Module):
     """
-    Weighted L1 Loss that applies different weights to masked and unmasked regions.
+    Mean Squared Error (MSE) Loss.
     """
-    def __init__(self, weight=1.0):
+    def __init__(self):
         super().__init__()
-        self.weight = weight
 
     def forward(self, predictions, target, mask):
-        weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
-        loss = (torch.abs(predictions - target) * weights).sum() / weights.sum()
-        return loss
-
-class WeightedL2Loss(nn.Module):
-    """
-    Weighted L2 Loss that applies different weights to masked and unmasked regions.
-    """
-    def __init__(self, weight=1.0):
-        super().__init__()
-        self.weight = weight
-
-    def forward(self, predictions, target, mask):
-        weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
-        loss = ((predictions - target) ** 2 * weights).sum() / weights.sum()
+        loss = ((predictions - target) ** 2 * mask).mean()
         return loss
     
-class WeightedPSNR(nn.Module):
+class RMSE(nn.Module):
     """
-    Weighted Peak Signal-to-Noise Ratio (WPSNR) that applies different weights to masked and unmasked regions.
+    Root Mean Squared Error (RMSE) Loss.
     """
-    def __init__(self, weight=1.0, data_range=350.0):
+    def __init__(self):
         super().__init__()
-        self.weight = weight
-        self.data_range = data_range
 
     def forward(self, predictions, target, mask):
-        weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
+        loss = ((predictions - target) ** 2 * mask).mean()
+        rmse = torch.sqrt(loss)
+        return rmse
 
-        squared_error = (predictions - target) ** 2
-        sum_of_weights = torch.sum(weights)
-        if sum_of_weights == 0:
-            return torch.tensor(0.0, device=predictions.device)
-        
-        wmse = torch.sum(weights * squared_error) / sum_of_weights
-        wmse = torch.clamp(wmse, min=1e-12)
+class MAE(nn.Module):
+    """
+    Mean Absolute Error (MAE) Loss.
+    """
+    def __init__(self):
+        super().__init__()
 
-        wpsnr_val = 10 * torch.log10((self.data_range ** 2) / wmse)
-        return wpsnr_val
+    def forward(self, predictions, target, mask):
+        loss = ((predictions - target) ** 2 * mask).mean()
+        return loss
+
 
 class CroppedSSIM(nn.Module):
     """
@@ -64,10 +50,7 @@ class CroppedSSIM(nn.Module):
 
     def forward(self, predictions, target, mask):
         mask = mask.to(predictions.device)
-        mask = (mask > 0).float()
 
-        if mask.sum() == 0:
-            return torch.tensor(0.0, device=predictions.device)
 
         # Find bounding box over spatial dimensions (ignore channel dim)
         y, x = torch.nonzero(mask[0][0], as_tuple=True)  # take channel 0
@@ -80,7 +63,7 @@ class CroppedSSIM(nn.Module):
 
         return self.ssim_metric(cropped_pred, cropped_target)
 
-class cSSIM_Loss(nn.Module):
+class SSIM_Loss(nn.Module):
     """
     Loss based on Cropped SSIM.
     """
