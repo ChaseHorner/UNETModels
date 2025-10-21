@@ -7,6 +7,8 @@ MODEL_FOLDER = './outputs/UNET_Base' # The folder where model checkpoints and lo
 
 BASE_MODEL = 'Unet'  # 'UNet' or 'Ynet'
 DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2'
+TRAIN_YEARS = ['2020', '2021', '2022', '2023']
+VAL_YEARS = ['2024']
 
 #Model description
 ''' 
@@ -36,7 +38,7 @@ BATCH_SIZE = 1
 ACCUMULATION_STEPS = 8
 EPOCHS = 100
 
-CRITERION = WeightedL1Loss(weight=0.9)
+CRITERION = MSE()
 OPTIMIZER = 'AdamW' # Not impmlemented yet, just a label
 LEARNING_RATE = 1e-4
 BETA1 = 0.9

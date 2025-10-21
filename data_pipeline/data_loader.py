@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 import time
 
 class FieldDataset(Dataset):
-    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'hmask']):
+    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'hmask'], years= None):
         '''
         root_dir: folder with subfolders per sample, each containing .pt files
         input_keys: list of keys for input tensors        '''
@@ -12,7 +12,11 @@ class FieldDataset(Dataset):
         self.input_keys = input_keys
 
         self.samples = []
+        
         for year in os.listdir(root_dir):
+            if years is not None and year not in years:
+                continue 
+
             year_path = os.path.join(root_dir, year)
             for field in os.listdir(year_path):
                 field_path = os.path.join(year_path, field)

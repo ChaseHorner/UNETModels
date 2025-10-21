@@ -9,17 +9,17 @@ from train import train_model
 from data_pipeline.data_loader import FieldDataset
 from visualize_predictions import visualize_predictions
 from objective_functions import *
+from save_resfs import save_resfs
 
 
 print("Imports complete")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS)
-print(f"Dataset loaded with {len(dataset)} samples")
+train_dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS, years=configs.TRAIN_YEARS)
+print(f"Training dataset loaded with {len(train_dataset)} samples")
 
-train_size = int(configs.TRAIN_VAL_SPLIT * len(dataset))
-val_size = len(dataset) - train_size
-train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+val_dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS, years=configs.VAL_YEARS)
+print(f"Validation dataset loaded with {len(val_dataset)} samples")
 
 train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
@@ -44,10 +44,11 @@ metrics = train_model(unet_model,
                         val_loader, 
                         configs.EPOCHS, 
                         device,
-                        accu = True)
+                        )
 
 
 chart_metrics(metrics, configs.MODEL_FOLDER, configs.EPOCHS)
 
-model_name = configs.MODEL_NAME + '_highest_psnr'
-visualize_predictions(unet_model, configs.MODEL_FOLDER, model_name, dataset.with_field_year(), num_images=2)
+visualize_predictions(unet_model, configs.MODEL_FOLDER, configs.MODEL_NAME, val_dataset.with_field_year())
+
+save_resfs(configs.MODEL_FOLDER, configs.MODEL_NAME)
