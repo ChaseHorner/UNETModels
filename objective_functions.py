@@ -16,6 +16,19 @@ class WeightedL1Loss(nn.Module):
         weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
         loss = (torch.abs(predictions - target) * weights).sum() / weights.sum()
         return loss
+
+class WeightedL2Loss(nn.Module):
+    """
+    Weighted L2 Loss that applies different weights to masked and unmasked regions.
+    """
+    def __init__(self, weight=1.0):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, predictions, target, mask):
+        weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
+        loss = ((predictions - target) ** 2 * weights).sum() / weights.sum()
+        return loss
     
 class WeightedPSNR(nn.Module):
     """
@@ -66,3 +79,16 @@ class CroppedSSIM(nn.Module):
         cropped_target = target[..., ymin:ymax, xmin:xmax]
 
         return self.ssim_metric(cropped_pred, cropped_target)
+
+class cSSIM_Loss(nn.Module):
+    """
+    Loss based on Cropped SSIM.
+    """
+    def __init__(self, data_range=350.0):
+        super().__init__()
+        self.cropped_ssim = CroppedSSIM(data_range=data_range)
+
+    def forward(self, predictions, target, mask):
+        ssim_value = self.cropped_ssim(predictions, target, mask)
+        loss = 1.0 - ssim_value
+        return loss
