@@ -2,18 +2,15 @@ import datetime
 from objective_functions import *
 
 # ====== Model =======
-MODEL_NAME = 'UNET_v0.6' # The name of the model, used for saving/loading
-MODEL_FOLDER = './outputs/UNET_v0.6' # The folder where model checkpoints and logs will be saved
+MODEL_NAME = 'UNET_Base' # The name of the model, used for saving/loading
+MODEL_FOLDER = './outputs/UNET_Base' # The folder where model checkpoints and logs will be saved
 
 BASE_MODEL = 'Unet'  # 'UNet' or 'Ynet'
 DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2'
 
 #Model description
 ''' 
-Small channel sizes
-weighted L1 with weight 0.9
-beta1 = 0.9
-lr = 1e-2
+Base config file 
 '''
 
 #Model Info
@@ -37,11 +34,11 @@ C7 = 4096
 
 BATCH_SIZE = 1
 ACCUMULATION_STEPS = 8
-EPOCHS = 5
+EPOCHS = 100
 
 CRITERION = WeightedL1Loss(weight=0.9)
-OPTIMIZER = 'AdamW'
-LEARNING_RATE = 1e-2
+OPTIMIZER = 'AdamW' # Not impmlemented yet, just a label
+LEARNING_RATE = 1e-4
 BETA1 = 0.9
 
 TRAIN_VAL_SPLIT = 0.85

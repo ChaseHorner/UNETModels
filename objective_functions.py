@@ -14,8 +14,7 @@ class WeightedL1Loss(nn.Module):
 
     def forward(self, predictions, target, mask):
         weights = torch.where(mask == 1.0, self.weight, 1.0-self.weight)
-        l1_diff = torch.abs(predictions - target)
-        loss = (l1_diff * weights).mean()
+        loss = (torch.abs(predictions - target) * weights).sum() / weights.sum()
         return loss
     
 class WeightedPSNR(nn.Module):
@@ -48,7 +47,7 @@ class CroppedSSIM(nn.Module):
     def __init__(self, data_range=350.0):
         super().__init__()
         self.data_range = data_range
-        self.ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range)
+        self.ssim_metric = StructuralSimilarityIndexMeasure(data_range=data_range).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
     def forward(self, predictions, target, mask):
         mask = mask.to(predictions.device)
@@ -58,7 +57,7 @@ class CroppedSSIM(nn.Module):
             return torch.tensor(0.0, device=predictions.device)
 
         # Find bounding box over spatial dimensions (ignore channel dim)
-        y, x = torch.nonzero(mask[0], as_tuple=True)  # take channel 0
+        y, x = torch.nonzero(mask[0][0], as_tuple=True)  # take channel 0
         ymin, ymax = y.min(), y.max() + 1
         xmin, xmax = x.min(), x.max() + 1
 

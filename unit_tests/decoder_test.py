@@ -1,5 +1,5 @@
 from models.components.decoder import Decoder
-import configs
+from config_loader import configs
 import torch
 
 

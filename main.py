@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, random_split
 from chart_metrics import chart_metrics
-import configs
+from config_loader import configs
 import models.unet as unet
 import os
 import torch.optim as optim

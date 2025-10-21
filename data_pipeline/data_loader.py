@@ -1,8 +1,6 @@
 import os
-from pyexpat import features
 import torch
 from torch.utils.data import Dataset, DataLoader
-import configs
 import time
 
 class FieldDataset(Dataset):

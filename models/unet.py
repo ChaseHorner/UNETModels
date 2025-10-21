@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import configs
+from config_loader import configs
 
 from models.components.encoder import Encoder
 from models.components.decoder import Decoder

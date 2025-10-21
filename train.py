@@ -1,7 +1,7 @@
 import time
 from flask import json
 import torch
-import configs
+from config_loader import configs
 from objective_functions import *
 from torch.nn import L1Loss
 
@@ -37,8 +37,8 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
 
         running_l1 += L1Loss()(predictions, target).item()
         running_wL1 += WeightedL1Loss(weight=criterion.weight)(predictions, target, inputs.get('hmask')).item()
-        running_wPSNR += WeightedPSNR(weight=criterion.weight)(predictions, target, inputs.get('hmask'), data_range=data_range).item()
-        running_cSSIM += CroppedSSIM()(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+        running_wPSNR += WeightedPSNR(weight=criterion.weight)(predictions, target, inputs.get('hmask')).item()
+        running_cSSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item()
 
         print(f"Training Step [{step+1}/{len(train_dataloader)}]", end="\r")
 
@@ -74,8 +74,8 @@ def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200.0)
 
 
             total_wL1 += WeightedL1Loss(weight=criterion.weight)(predictions, target, inputs.get('hmask')).item()
-            total_wPSNR +=  WeightedPSNR(weight=criterion.weight)(predictions, target, inputs.get('hmask'), data_range=data_range).item()
-            total_cSSIM += CroppedSSIM()(predictions, target, inputs.get('hmask'), data_range=data_range).item()
+            total_wPSNR +=  WeightedPSNR(weight=criterion.weight)(predictions, target, inputs.get('hmask')).item()
+            total_cSSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item()
             total_l1 += L1Loss()(predictions, target).item()
             total_count += 1
 
@@ -130,15 +130,16 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
         # Print and log loss at end of epochs
         with open(f"{model_folder}/logs.txt", "a") as f:
-            f.write("-" * 59)
+            f.write("-" * 59 + "\n")
             f.write(
                 "| End of epoch {:3d} | Time: {:5.2f}s | Train wPSNR {:8.3f} | Train cSSIM {:8.3f} | Train L1 {:8.3f} | Train wL1 {:8.3f} "
                 "| Eval wPSNR {:8.3f} | Eval cSSIM {:8.3f} | Eval L1 {:8.3f} | Eval wL1 {:8.3f} ".format(
                     epoch, time.time() - epoch_start_time, train_metrics["wPSNR"], train_metrics["cSSIM"], train_metrics["l1"], train_metrics["wL1"],
                     eval_metrics["wPSNR"], eval_metrics["cSSIM"], eval_metrics["l1"], eval_metrics["wL1"]
                 )
+                + "\n"
             )
-            f.write("-" * 59)
+            f.write("-" * 59 + "\n")
 
         print("-" * 59)
         print(
@@ -169,7 +170,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     }
 
     # Save metrics to a JSON file
-    with open(f"outputs/{model_folder}/{model_name}_metrics.json", "w") as f:
+    with open(f"{model_folder}/{model_name}_metrics.json", "w") as f:
         json.dump(metrics, f)
 
     return metrics
