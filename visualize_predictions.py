@@ -3,11 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from config_loader import configs
+from  matplotlib.colors import LinearSegmentedColormap
 
+
+MAX = 150
+cmap=LinearSegmentedColormap.from_list('rg',["r", "w", "g"], N=256)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def visualize_predictions(model, model_folder, model_name, dataset, num_images=10):
-    model.load_state_dict(torch.load(model_folder + f'/{model_name}.pt'))
+    model.load_state_dict(torch.load(model_folder + f'/{model_name}_lowest_mse.pt'))
     model.to(device)
     model.eval()
 
@@ -34,21 +38,43 @@ def visualize_predictions(model, model_folder, model_name, dataset, num_images=1
             # move to CPU and convert to numpy
             target = target.cpu().numpy()
             predictions = predictions.cpu().numpy()
-    
+            mask = inputs.get('hmask').cpu().numpy()
+
+            # Only plot where mask == 1.0
+            mask = np.squeeze(mask[0])  # shape: H x W
+            pred_img = np.squeeze(predictions[0])
+            target_img = np.squeeze(target[0])
+            diff_img = pred_img - target_img
+
+            # Apply mask
+            pred_masked = np.where(mask == 1.0, pred_img, np.nan)
+            target_masked = np.where(mask == 1.0, target_img, np.nan)
+            diff_masked = np.where(mask == 1.0, diff_img, np.nan)
+            
+            #Crop NaN borders for better visualization
+            ys, xs = np.where(~np.isnan(target_masked))
+            if ys.size > 0 and xs.size > 0:
+                y_min, y_max = ys.min(), ys.max()
+                x_min, x_max = xs.min(), xs.max()
+                pred_masked = pred_masked[y_min:y_max+1, x_min:x_max+1]
+                target_masked = target_masked[y_min:y_max+1, x_min:x_max+1]
+                diff_masked = diff_masked[y_min:y_max+1, x_min:x_max+1]
+
             plt.figure(figsize=(120, 40))
             display_list = [
-                np.squeeze(predictions[0]), 
-                np.squeeze(target[0]), 
-                np.abs(np.squeeze(predictions[0]) - np.squeeze(target[0]))
-                
+                np.clip(pred_masked, 0, MAX),
+                np.clip(target_masked, 0, MAX),
+                np.clip(diff_masked, -MAX/2, MAX/2)
             ]
-            titles = ['Prediction', 'Target', 'Difference']
+            titles = ['Prediction', 'Target', 'Difference (Pred - Target)']
+            
             
             for i in range(3):
                 plt.subplot(1, 3, i+1)
-                plt.title(titles[i], fontdict={'fontsize': 60})
+                plt.title(titles[i], fontdict={'fontsize': 100}, pad=60)
                 img = display_list[i]
-                plt.imshow(img)    
+                im = plt.imshow(img, cmap=cmap, vmin=-MAX*3/4 , vmax=MAX*3/4) if i == 2 else plt.imshow(img, cmap='Greens', vmin=0, vmax=MAX)
+                plt.colorbar(im, fraction=0.05).ax.tick_params(labelsize=40)
                 plt.axis('off')
 
             output_path = os.path.join(model_folder, f"{field_year}.png")
@@ -60,8 +86,7 @@ if __name__ == "__main__":
     import models.unet as unet
 
     dataset = FieldDataset(configs.DATASET_PATH).with_field_year()
-    model_folder = './outputs/UNET_v0.9'
-    MODEL_NAME = 'UNET_v0.9_lowest_wloss'  # Change to the desired model variant
+    MODEL_NAME = 'UNET_v0.7'  # Change to the desired model variant
 
     unet_model = unet.Unet()
-    visualize_predictions(unet_model, model_folder, MODEL_NAME, dataset, num_images=2)
+    visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_NAME, dataset, num_images=1)
