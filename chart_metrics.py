@@ -5,8 +5,8 @@ def chart_metrics(metrics, model_folder, EPOCHS):
 
     # MSE
     plt.subplot(1, 4, 1)
-    plt.plot(range(1, EPOCHS + 1), metrics["train_MSE"], label='MSE Training', color='blue', linestyle='--')
-    plt.plot(range(1, EPOCHS + 1), metrics["eval_MSE"], label='MSE Validation', color='blue')
+    plt.plot(range(1, EPOCHS + 1), metrics["train_mse"], label='MSE Training', color='blue', linestyle='--')
+    plt.plot(range(1, EPOCHS + 1), metrics["eval_mse"], label='MSE Validation', color='blue')
     plt.xlabel('Epochs')
     plt.ylabel('MSE')
     plt.legend()

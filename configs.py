@@ -43,9 +43,6 @@ OPTIMIZER = 'AdamW' # Not impmlemented yet, just a label
 LEARNING_RATE = 1e-4
 BETA1 = 0.9
 
-TRAIN_VAL_SPLIT = 0.85
-
-
 # ===== Inputs ======
 
 INPUT_KEYS = ['lidar', 'sentinel', 'hmask']  # Options: 'lidar', 'sentinel', 'pre_season', 'in_season', 'hmask'
