@@ -3,7 +3,6 @@ from flask import json
 import torch
 from config_loader import configs
 from objective_functions import *
-from torch.nn import L1Loss
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=200.0):
     model.train()
@@ -24,8 +23,9 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
             optimizer.step()
             optimizer.zero_grad()
 
-        running_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
-        running_RMSE += RMSE()(predictions, target, inputs.get('hmask')).item() * count
+        mse = MSE()(predictions, target, inputs.get('hmask'))
+        running_MSE += mse.item() * count
+        running_RMSE += mse.sqrt().item() * count
         running_MAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
         running_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
         total_count += count
@@ -46,7 +46,7 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
 
 
 
-def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200.0):
+def evaluate_epoch(model, valid_dataloader, device, data_range=200.0):
     model.eval()
     total_MSE, total_RMSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0, 0.0
 
@@ -59,8 +59,9 @@ def evaluate_epoch(model, criterion, valid_dataloader, device, data_range=200.0)
         
             count = (inputs.get('hmask') == 1.0).sum().item()
 
-            total_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
-            total_RMSE += RMSE()(predictions, target, inputs.get('hmask')).item() * count
+            mse = MSE()(predictions, target, inputs.get('hmask'))
+            total_MSE += mse.item() * count
+            total_RMSE += mse.sqrt().item() * count
             total_MAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
             total_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
             total_count += count
@@ -90,7 +91,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         train_ssims.append(to_float(train_metrics["SSIM"]))
 
         # Evaluation
-        eval_metrics = evaluate_epoch(model, criterion, valid_dataloader, device, data_range=data_range)
+        eval_metrics = evaluate_epoch(model, valid_dataloader, device, data_range=data_range)
         eval_mses.append(to_float(eval_metrics["MSE"]))
         eval_rmses.append(to_float(eval_metrics["RMSE"]))
         eval_maes.append(to_float(eval_metrics["MAE"]))

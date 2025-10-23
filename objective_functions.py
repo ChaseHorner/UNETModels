@@ -5,38 +5,22 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 
 class MSE(nn.Module):
-    """
-    Mean Squared Error (MSE) Loss.
-    """
-    def __init__(self):
-        super().__init__()
-
     def forward(self, predictions, target, mask):
-        loss = ((predictions - target) ** 2 * mask).mean()
-        return loss
-    
+        masked_diff = (predictions - target) ** 2 * mask
+        valid_count = mask.sum()
+        return masked_diff.sum() / valid_count
+
 class RMSE(nn.Module):
-    """
-    Root Mean Squared Error (RMSE) Loss.
-    """
-    def __init__(self):
-        super().__init__()
-
     def forward(self, predictions, target, mask):
-        loss = ((predictions - target) ** 2 * mask).mean()
-        rmse = torch.sqrt(loss)
-        return rmse
+        masked_diff = (predictions - target) ** 2 * mask
+        valid_count = mask.sum()
+        return torch.sqrt(masked_diff.sum() / valid_count)
 
 class MAE(nn.Module):
-    """
-    Mean Absolute Error (MAE) Loss.
-    """
-    def __init__(self):
-        super().__init__()
-
     def forward(self, predictions, target, mask):
-        loss = ((predictions - target) ** 2 * mask).mean()
-        return loss
+        masked_diff = torch.abs(predictions - target) * mask
+        valid_count = mask.sum()
+        return masked_diff.sum() / valid_count
 
 
 class CroppedSSIM(nn.Module):
