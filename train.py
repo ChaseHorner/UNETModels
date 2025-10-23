@@ -6,7 +6,7 @@ from objective_functions import *
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device):
     model.train()
-    running_MSE, running_MAE, running_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
+    running_MSE = running_MAE = running_SSIM = total_count = 0.0
 
     optimizer.zero_grad()
 
@@ -47,7 +47,7 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
 
 def evaluate_epoch(model, valid_dataloader, device):
     model.eval()
-    total_MSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
+    total_MSE = total_MAE = total_SSIM = total_count = 0.0
 
     with torch.no_grad():
         for batch in valid_dataloader:
@@ -70,15 +70,28 @@ def evaluate_epoch(model, valid_dataloader, device):
         "SSIM": total_SSIM / total_count,
     }
 
-def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device):
-    train_mses, train_rmses, train_maes, train_ssims = [], [], [], []
-    eval_mses, eval_rmses, eval_maes, eval_ssims = [], [], [], []
+def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, start_epoch=1, metrics=None):
+    if metrics is None:
+        metrics = {
+            "train_mses": [],
+            "train_rmses": [],
+            "train_maes": [],
+            "train_ssims": [],
+            "eval_mses": [],
+            "eval_rmses": [],
+            "eval_maes": [],
+            "eval_ssims": []
+        }
+    train_mses = train_rmses = train_maes = train_ssims = []
+    eval_mses = eval_rmses = eval_maes = eval_ssims = []
+    model_path = optimizer_path = None
+    early_stopping = False
     best_mse_eval = (float('inf'), -1)  # (loss, epoch)
     best_mae_eval = (float('inf'), -1)
     best_ssim_eval = (-float('inf'), -1)
-    times = []
 
-    for epoch in range(1, num_epochs+1):
+    train_start_time = time.time()
+    for epoch in range(start_epoch, num_epochs+1):
         epoch_start_time = time.time()
         # Training
         train_metrics = train_epoch(model, optimizer, criterion, train_dataloader, device)
@@ -96,15 +109,16 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
         # Save best model based on eval loss
         if best_mse_eval[0] > eval_metrics["MSE"]:
-            torch.save(model.state_dict(), model_folder + f'/{model_name}_lowest_mse.pt')
+            model_path = model_folder + f'/{model_name}_{epoch}.pt'
+            optimizer_path = model_folder + f'/{model_name}_optimizer_{epoch}.pt'
+            torch.save(model.state_dict(), model_path)
+            torch.save(optimizer.state_dict(), optimizer_path)
             best_mse_eval = (eval_metrics["MSE"], epoch)
         # Save best model based on eval MAE
         if best_mae_eval[0] > eval_metrics["MAE"]:
-            torch.save(model.state_dict(), model_folder + f'/{model_name}_lowest_mae.pt')
             best_mae_eval = (eval_metrics["MAE"], epoch)
         # Save best model based on eval SSIM
         if best_ssim_eval[0] < eval_metrics["SSIM"]:
-            torch.save(model.state_dict(), model_folder + f'/{model_name}_highest_ssim.pt')
             best_ssim_eval = (eval_metrics["SSIM"], epoch)
 
         # Print and log loss at end of epochs
@@ -128,31 +142,62 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
               )
         )
         print("-" * 59)
+
+        # Early stopping based on eval MSE
+        if eval_metrics["MSE"] > 1.05 * best_mse_eval[0]:
+            print(f"Evaluating stopping at epoch {epoch} due to increasing eval MSE.")
+            if early_stop(eval_mses, configs.EARLY_STOPPING_LENGTH, configs.EARLY_STOPPING_THRESHOLD):
+                early_stopping = True
+                print(f"Early stopping triggered at epoch {epoch}.")
+                with open(f"{model_folder}/logs.txt", "a") as f:
+                    f.write(f"Early stopping triggered at epoch {epoch}.\n")
+                break
+
+        # Stop training if total wall-clock time exceeds 5 hours
+        elapsed_hours = (time.time() - train_start_time) / 3600.0
+        if elapsed_hours >= 5.75:
+            print(f"Stopping training after {elapsed_hours:.2f} hours (limit: 5.75 hours).")
+            with open(f"{model_folder}/logs.txt", "a") as f:
+                f.write(f"Stopped training after {elapsed_hours:.2f} hours (limit: 5.75 hours).\n")
+            break
     
+
+    if best_mse_eval[1] != (start_epoch + num_epochs):
+        torch.save(model.state_dict(), model_folder + f'/{model_name}_{start_epoch + num_epochs}.pt')
+        torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{start_epoch + num_epochs}.pt')
+
     # Save epoch number to a txt file
     with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
         f.write(f"Best MSE Epoch: {best_mse_eval[1]} with MSE: {best_mse_eval[0]:.4f}\n")
         f.write(f"Best MAE Epoch: {best_mae_eval[1]} with MAE: {best_mae_eval[0]:.4f}\n")
         f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")
 
-    metrics = {
-        'train_mse': train_mses,
-        'train_rmse': train_rmses,
-        'train_mae': train_maes,
-        'train_ssim': train_ssims,
-        'eval_mse': eval_mses,
-        'eval_rmse': eval_rmses,
-        'eval_mae': eval_maes,
-        'eval_ssim': eval_ssims,
-        'time': times
-    }
+    for key in metrics.keys():
+        metrics[key] += eval(key)
 
     # Save metrics to a JSON file
     with open(f"{model_folder}/metrics.json", "w") as f:
         json.dump(metrics, f)
 
-    return metrics
+    return metrics, model_path, optimizer_path, early_stopping
 
 
 def to_float(x):
     return x.item() if torch.is_tensor(x) else float(x)
+
+def early_stop(eval_mses, length=50, threshold=0.0):
+    if len(eval_mses) < length + 1:
+        return False
+    recent_vals = eval_mses[-length:]
+
+    xs = list(range(length))
+    mean_x = sum(xs) / length
+    mean_y = sum(recent_vals) / length
+
+    num = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, recent_vals))
+    den = sum((x - mean_x) ** 2 for x in xs)
+    if den == 0:
+        return False
+
+    slope = num / den
+    return slope > threshold
