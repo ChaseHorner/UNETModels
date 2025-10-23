@@ -4,9 +4,9 @@ import torch
 from config_loader import configs
 from objective_functions import *
 
-def train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=200.0):
+def train_epoch(model, optimizer, criterion, train_dataloader, device):
     model.train()
-    running_MSE, running_RMSE, running_MAE, running_SSIM, total_count = 0.0, 0.0, 0.0, 0.0, 0.0
+    running_MSE, running_MAE, running_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
 
     optimizer.zero_grad()
 
@@ -23,9 +23,8 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
             optimizer.step()
             optimizer.zero_grad()
 
-        mse = MSE()(predictions, target, inputs.get('hmask'))
-        running_MSE += mse.item() * count
-        running_RMSE += mse.sqrt().item() * count
+        
+        running_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
         running_MAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
         running_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
         total_count += count
@@ -39,16 +38,16 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device, data_rang
     # Compute the average loss across all pixels seen in the epoch
     return {
         "MSE": running_MSE / total_count,
-        "RMSE": running_RMSE / total_count,
+        "RMSE": (running_MSE / total_count) ** 0.5,
         "MAE": running_MAE / total_count,
         "SSIM": running_SSIM / total_count,
     }
 
 
 
-def evaluate_epoch(model, valid_dataloader, device, data_range=200.0):
+def evaluate_epoch(model, valid_dataloader, device):
     model.eval()
-    total_MSE, total_RMSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0, 0.0
+    total_MSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
 
     with torch.no_grad():
         for batch in valid_dataloader:
@@ -59,21 +58,19 @@ def evaluate_epoch(model, valid_dataloader, device, data_range=200.0):
         
             count = (inputs.get('hmask') == 1.0).sum().item()
 
-            mse = MSE()(predictions, target, inputs.get('hmask'))
-            total_MSE += mse.item() * count
-            total_RMSE += mse.sqrt().item() * count
+            total_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
             total_MAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
             total_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
             total_count += count
 
     return {
         "MSE": total_MSE / total_count,
-        "RMSE": total_RMSE / total_count,
+        "RMSE": (total_MSE / total_count) ** 0.5,
         "MAE": total_MAE / total_count,
         "SSIM": total_SSIM / total_count,
     }
 
-def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, data_range=350.0):
+def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device):
     train_mses, train_rmses, train_maes, train_ssims = [], [], [], []
     eval_mses, eval_rmses, eval_maes, eval_ssims = [], [], [], []
     best_mse_eval = (float('inf'), -1)  # (loss, epoch)
@@ -84,14 +81,14 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     for epoch in range(1, num_epochs+1):
         epoch_start_time = time.time()
         # Training
-        train_metrics = train_epoch(model, optimizer, criterion, train_dataloader, device, data_range=data_range)
+        train_metrics = train_epoch(model, optimizer, criterion, train_dataloader, device)
         train_mses.append(to_float(train_metrics["MSE"]))
         train_rmses.append(to_float(train_metrics["RMSE"]))
         train_maes.append(to_float(train_metrics["MAE"]))
         train_ssims.append(to_float(train_metrics["SSIM"]))
 
         # Evaluation
-        eval_metrics = evaluate_epoch(model, valid_dataloader, device, data_range=data_range)
+        eval_metrics = evaluate_epoch(model, valid_dataloader, device)
         eval_mses.append(to_float(eval_metrics["MSE"]))
         eval_rmses.append(to_float(eval_metrics["RMSE"]))
         eval_maes.append(to_float(eval_metrics["MAE"]))
