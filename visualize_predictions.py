@@ -10,8 +10,8 @@ MAX = 150
 cmap=LinearSegmentedColormap.from_list('rg',["r", "w", "g"], N=256)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def visualize_predictions(model, model_folder, model_name, dataset, num_images=10):
-    model.load_state_dict(torch.load(model_folder + f'/{model_name}_lowest_mse.pt'))
+def visualize_predictions(model, model_folder, model_path, dataset, num_images=10):
+    model.load_state_dict(torch.load(model_path))
     model.to(device)
     model.eval()
 

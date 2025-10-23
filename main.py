@@ -35,20 +35,18 @@ os.makedirs(configs.MODEL_FOLDER, exist_ok=True)
 
 print("\n===============================\n")
 print(f"Training {configs.MODEL_NAME} on {device} for {configs.EPOCHS} epochs...")
-metrics = train_model(unet_model, 
-                        configs.MODEL_NAME, 
-                        configs.MODEL_FOLDER, 
-                        optimizer, 
-                        configs.CRITERION, 
-                        train_loader, 
-                        val_loader, 
-                        configs.EPOCHS, 
-                        device,
-                        )
+metrics, model_path, optimizer_path, early_stopping = train_model(unet_model, 
+                                                                    configs.MODEL_NAME, 
+                                                                    configs.MODEL_FOLDER, 
+                                                                    optimizer, 
+                                                                    configs.CRITERION, 
+                                                                    train_loader, 
+                                                                    val_loader, 
+                                                                    configs.EPOCHS, 
+                                                                    device,
+                                                                    )
 
 
 chart_metrics(metrics, configs.MODEL_FOLDER, configs.EPOCHS)
-
-visualize_predictions(unet_model, configs.MODEL_FOLDER, configs.MODEL_NAME, val_dataset.with_field_year())
-
+visualize_predictions(unet_model, configs.MODEL_FOLDER, model_path, val_dataset.with_field_year())
 save_resfs(configs.MODEL_FOLDER, configs.MODEL_NAME)
