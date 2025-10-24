@@ -84,7 +84,8 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         }
     train_mses = train_rmses = train_maes = train_ssims = []
     eval_mses = eval_rmses = eval_maes = eval_ssims = []
-    model_path = optimizer_path = None
+    model_path = model_folder + f'/{model_name}_best.pt'
+    optimizer_path = model_folder + f'/{model_name}_optimizer_best.pt'   
     early_stopping = False
     best_mse_eval = (float('inf'), -1)  # (loss, epoch)
     best_mae_eval = (float('inf'), -1)
@@ -109,8 +110,6 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
         # Save best model based on eval loss
         if best_mse_eval[0] > eval_metrics["MSE"]:
-            model_path = model_folder + f'/{model_name}_{epoch}.pt'
-            optimizer_path = model_folder + f'/{model_name}_optimizer_{epoch}.pt'
             torch.save(model.state_dict(), model_path)
             torch.save(optimizer.state_dict(), optimizer_path)
             best_mse_eval = (eval_metrics["MSE"], epoch)
@@ -163,8 +162,8 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     
 
     if best_mse_eval[1] != (start_epoch + num_epochs):
-        torch.save(model.state_dict(), model_folder + f'/{model_name}_{start_epoch + num_epochs}.pt')
-        torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{start_epoch + num_epochs}.pt')
+        torch.save(model.state_dict(), model_folder + f'/{model_name}_{num_epochs}.pt')
+        torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{num_epochs}.pt')
 
     # Save epoch number to a txt file
     with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
