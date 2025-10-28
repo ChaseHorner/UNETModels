@@ -6,7 +6,7 @@ from objective_functions import *
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device):
     model.train()
-    running_MSE = running_MAE = running_SSIM = total_count = 0.0
+    running_MSE, running_MAE, running_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
 
     optimizer.zero_grad()
 
@@ -47,7 +47,7 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
 
 def evaluate_epoch(model, valid_dataloader, device):
     model.eval()
-    total_MSE = total_MAE = total_SSIM = total_count = 0.0
+    total_MSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
 
     with torch.no_grad():
         for batch in valid_dataloader:
@@ -82,8 +82,8 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             "eval_maes": [],
             "eval_ssims": []
         }
-    train_mses = train_rmses = train_maes = train_ssims = []
-    eval_mses = eval_rmses = eval_maes = eval_ssims = []
+    train_mses, train_rmses, train_maes, train_ssims = [], [], [], []
+    eval_mses, eval_rmses, eval_maes, eval_ssims = [], [], [], []
     model_path = model_folder + f'/{model_name}_best.pt'
     optimizer_path = model_folder + f'/{model_name}_optimizer_best.pt'   
     early_stopping = False

@@ -41,3 +41,13 @@ def chart_metrics(metrics, model_folder, EPOCHS):
 
     plt.tight_layout()
     plt.savefig(model_folder + '/loss.png')
+
+
+if __name__ == "__main__":
+    import json
+    MODEL_FOLDER = 'outputs/UNET_v1.2.1'  # Change to the desired model folder
+    model_status_path = f'{MODEL_FOLDER}/status.json'
+    with open(model_status_path, "r") as f:
+        model_status = json.load(f)
+
+    chart_metrics(model_status["metrics"], MODEL_FOLDER, model_status["last_trained_epoch"])
