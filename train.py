@@ -92,7 +92,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     best_ssim_eval = (-float('inf'), -1)
 
     train_start_time = time.time()
-    for epoch in range(start_epoch, num_epochs+1):
+    for epoch in range(start_epoch, start_epoch + num_epochs + 1):
         epoch_start_time = time.time()
         # Training
         train_metrics = train_epoch(model, optimizer, criterion, train_dataloader, device)

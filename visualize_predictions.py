@@ -86,7 +86,7 @@ if __name__ == "__main__":
     from data_pipeline.data_loader import FieldDataset
     import models.unet as unet
 
-    dataset = FieldDataset(configs.DATASET_PATH).with_field_year()
+    dataset = FieldDataset(configs.DATASET_PATH, years=configs.VAL_YEARS).with_field_year()
     MODEL_NAME = 'UNET_v1.2.1'  # Change to the desired model variant
     MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best.pt'
 
