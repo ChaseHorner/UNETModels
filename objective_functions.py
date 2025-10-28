@@ -59,3 +59,8 @@ class SSIM_Loss(nn.Module):
         ssim_value = self.cropped_ssim(predictions, target, mask)
         loss = 1.0 - ssim_value
         return loss
+    
+class WholeFieldDiff(nn.Module):
+    def forward(self, predictions, target, mask):
+        diff = torch.sum(predictions * mask) - torch.sum(target * mask)
+        return torch.abs(diff)
