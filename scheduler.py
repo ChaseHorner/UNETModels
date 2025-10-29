@@ -48,11 +48,11 @@ def monitor_jobs():
             with open(model_status_path, "r") as f:
                 model_status = json.load(f)
                 model_statuses[model_name] = model_status
-            if model_status["finished"]:
+            if model_status["finished"] == True:
                 print(f"Model {model_name} is already finished.")
-                if model_name in current_jobs:
+                if model_name in current_jobs.keys():
                     del current_jobs[model_name]
-            elif model_name not in current_jobs:
+            elif model_name not in current_jobs.keys():
                 models_to_resubmit.append(model_name)
         
         # Check active jobs for any that have ended without finishing
@@ -109,8 +109,9 @@ if __name__ == "__main__":
         "last_trained_time": None
     }
         model_status_path = f'outputs/{model_name}/status.json'
-        with open(model_status_path, "w") as f:
-            json.dump(model_status, f)
 
+        if not os.path.exists(model_status_path):
+            with open(model_status_path, "w") as f:
+                json.dump(model_status, f)
 
     monitor_jobs()
