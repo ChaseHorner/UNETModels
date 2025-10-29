@@ -62,5 +62,5 @@ class SSIM_Loss(nn.Module):
     
 class WholeFieldDiff(nn.Module):
     def forward(self, predictions, target, mask):
-        diff = torch.sum(predictions * mask) - torch.sum(target * mask)
-        return torch.abs(diff)
+        diff = torch.sum(target * mask) - torch.sum(predictions * mask)
+        return diff
