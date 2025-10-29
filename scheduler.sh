@@ -7,4 +7,4 @@
 #SBATCH --output=outputs/slurm-%j.out
 #SBATCH --error=outputs/slurm-%j.err
 
-python scheduler.py 
+python -u  scheduler.py 

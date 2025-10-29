@@ -38,64 +38,83 @@ def monitor_jobs():
     Monitors all models and resubmits jobs for unfinished ones.
     """
     current_jobs = {}
-    model_statuses = {}
     
     while True:
-        models_to_resubmit = []
+        models_to_submit_or_resubmit = []
         
-        # Check all models for their finished status
+        # Check all models for their finished status based on status.json
         for model_name in model_names:
             model_status_path = f'outputs/{model_name}/status.json'
-            with open(model_status_path, "r") as f:
-                model_status = json.load(f)
-                model_statuses[model_name] = model_status
-            if model_status["finished"] == True:
+            try:
+                with open(model_status_path, "r") as f:
+                    model_status = json.load(f)
+            except FileNotFoundError:
+                print(f"Status file not found for {model_name}. Skipping...")
+                continue
+            
+            if model_status["finished"]:
                 print(f"Model {model_name} is already finished.")
-                if model_name in current_jobs.keys():
+                if model_name in current_jobs:
                     del current_jobs[model_name]
-            elif model_name not in current_jobs.keys():
-                models_to_resubmit.append(model_name)
+            elif model_name not in current_jobs:
+                models_to_submit_or_resubmit.append(model_name)
         
         # Check active jobs for any that have ended without finishing
-        jobs_to_delete = []
-        for model_name, job_id in current_jobs.items():
+        # Iterate over a copy of the dictionary to avoid issues with deleting items during iteration
+        jobs_to_check = list(current_jobs.items())
+        for model_name, job_id in jobs_to_check:
             try:
-                sacct_command = ['sacct', '-j', str(job_id), '--format=State', '--noheader']
+                # Use --noheader and -n for a cleaner state output
+                sacct_command = ['sacct', '-j', str(job_id), '--format=State', '--noheader', '-n']
                 sacct_result = subprocess.run(sacct_command, capture_output=True, text=True, check=True)
-                status = sacct_result.stdout.strip().split('\n')
                 
-                print(f"Job {job_id} for {model_name} is in state: {status}")
+                # Check for any state that indicates the job is no longer active
+                # The output from sacct can include step information, so check all lines
+                states = [line.strip() for line in sacct_result.stdout.strip().split('\n') if line.strip()]
+                
+                print(f"Job {job_id} for {model_name} is in state: {states}")
 
-                if 'COMPLETED' in status or 'TIMEOUT' in status or 'FAILED' in status or 'CANCELLED' in status:
-                    # The job is no longer running.
-                    # Since it wasn't marked as finished, we must resubmit it.
+                # If the job is not PENDING or RUNNING, it has ended.
+                if not any(s in states for s in ['PENDING', 'RUNNING']):
                     print(f"Job {job_id} for {model_name} ended. Adding to resubmit list.")
-                    models_to_resubmit.append(model_name)
-                    jobs_to_delete.append(model_name)
+                    if model_name not in models_to_submit_or_resubmit:
+                        models_to_submit_or_resubmit.append(model_name)
+                    del current_jobs[model_name]
             
             except subprocess.CalledProcessError:
-                # `sacct` will fail for jobs that are too old and have been purged from the database.
-                # In this case, we'll assume it finished and wasn't marked complete.
+                # This could mean the job ID is no longer in Slurm's active accounting.
+                # It likely ended long ago without updating the status file.
                 print(f"Could not retrieve status for job {job_id}. Assuming ended and needs resubmission.")
-                models_to_resubmit.append(model_name)
-                jobs_to_delete.append(model_name)
-
-        for model in jobs_to_delete:
-            del current_jobs[model]
+                if model_name not in models_to_submit_or_resubmit:
+                    models_to_submit_or_resubmit.append(model_name)
+                del current_jobs[model_name]
 
         # Submit new jobs for any models that need it
-        for model_name in models_to_resubmit:
+        for model_name in models_to_submit_or_resubmit:
             job_id = submit_training_job(model_name)
             if job_id:
                 current_jobs[model_name] = job_id
 
         # Exit condition: all models are finished
-        if not current_jobs and all(m in model_statuses and model_statuses[m]["finished"] for m in model_names):
+        all_finished = True
+        for model_name in model_names:
+            try:
+                with open(f'outputs/{model_name}/status.json', "r") as f:
+                    model_status = json.load(f)
+                if not model_status["finished"]:
+                    all_finished = False
+                    break
+            except FileNotFoundError:
+                all_finished = False
+                break
+        
+        if not current_jobs and all_finished:
             print("All models have finished training.")
             break
         
         print(f"Currently monitoring {len(current_jobs)} active jobs.")
-        time.sleep(60 * 20)  # Wait for 20 minutes before checking again
+        time.sleep(60 * 5)  # Wait a short time before checking again, can be increased.
+
 
 if __name__ == "__main__":
     for model_name in model_names:
