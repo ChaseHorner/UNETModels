@@ -4,7 +4,6 @@ import torch
 from config_loader import configs
 from objective_functions import *
 import os
-import torch.distributed as dist
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device):
     model.train()
@@ -72,7 +71,7 @@ def evaluate_epoch(model, valid_dataloader, device):
         "SSIM": total_SSIM / total_count,
     }
 
-def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, start_epoch=1, metrics=None, is_distributed=False):
+def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, start_epoch=1, metrics=None):
     if metrics is None:
         metrics = {
             "train_mses": [],
@@ -95,9 +94,6 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
     train_start_time = time.time()
     for epoch in range(start_epoch, start_epoch + num_epochs):
-
-        if is_distributed:
-            train_dataloader.sampler.set_epoch(epoch)
 
         epoch_start_time = time.time()
         # Training
@@ -127,80 +123,78 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             best_ssim_eval = (eval_metrics["SSIM"], epoch)
 
         # Print and log loss at end of epochs
-        if is_main():
-            with open(f"{model_folder}/logs.txt", "a") as f:
-                f.write("-" * 59 + "\n")
-                f.write(
-                    "| End of epoch {:3d} | Time: {:5.2f}s | Train MSE {:8.3f} | Train RMSE {:8.3f} | Train MAE {:8.3f} | Train SSIM {:8.3f} "
-                    "| Eval MSE {:8.3f} | Eval RMSE {:8.3f} | Eval MAE {:8.3f} | Eval SSIM {:8.3f} ".format(
-                        epoch, time.time() - epoch_start_time, train_metrics["MSE"], train_metrics["RMSE"], train_metrics["MAE"], train_metrics["SSIM"],
-                        eval_metrics["MSE"], eval_metrics["RMSE"], eval_metrics["MAE"], eval_metrics["SSIM"]
-                    )
-                    + "\n"
-                )
-                f.write("-" * 59 + "\n")
-
-            print("-" * 59)
-            print("| End of epoch {:3d} | Time: {:5.2f}s | Train MSE {:8.3f} | Train RMSE {:8.3f} | Train MAE {:8.3f} | Train SSIM {:8.3f} "
+        with open(f"{model_folder}/logs.txt", "a") as f:
+            f.write("-" * 59 + "\n")
+            f.write(
+                "| End of epoch {:3d} | Time: {:5.2f}s | Train MSE {:8.3f} | Train RMSE {:8.3f} | Train MAE {:8.3f} | Train SSIM {:8.3f} "
                 "| Eval MSE {:8.3f} | Eval RMSE {:8.3f} | Eval MAE {:8.3f} | Eval SSIM {:8.3f} ".format(
                     epoch, time.time() - epoch_start_time, train_metrics["MSE"], train_metrics["RMSE"], train_metrics["MAE"], train_metrics["SSIM"],
                     eval_metrics["MSE"], eval_metrics["RMSE"], eval_metrics["MAE"], eval_metrics["SSIM"]
                 )
+                + "\n"
             )
-            print("-" * 59)
+            f.write("-" * 59 + "\n")
 
-            # Early stopping based on eval MSE
-            if eval_metrics["MSE"] > 1.05 * best_mse_eval[0]:
-                print(f"Evaluating stopping at epoch {epoch} due to increasing eval MSE.")
-                if early_stop(eval_mses, configs.EARLY_STOPPING_LENGTH, configs.EARLY_STOPPING_THRESHOLD):
-                    early_stopping = True
-                    print(f"Early stopping triggered at epoch {epoch}.")
-                    with open(f"{model_folder}/logs.txt", "a") as f:
-                        f.write(f"Early stopping triggered at epoch {epoch}.\n")
-                    break
+        print("-" * 59)
+        print("| End of epoch {:3d} | Time: {:5.2f}s | Train MSE {:8.3f} | Train RMSE {:8.3f} | Train MAE {:8.3f} | Train SSIM {:8.3f} "
+            "| Eval MSE {:8.3f} | Eval RMSE {:8.3f} | Eval MAE {:8.3f} | Eval SSIM {:8.3f} ".format(
+                epoch, time.time() - epoch_start_time, train_metrics["MSE"], train_metrics["RMSE"], train_metrics["MAE"], train_metrics["SSIM"],
+                eval_metrics["MSE"], eval_metrics["RMSE"], eval_metrics["MAE"], eval_metrics["SSIM"]
+            )
+        )
+        print("-" * 59)
 
-            # Stop training if total wall-clock time exceeds 5 hours
-            elapsed_hours = (time.time() - train_start_time) / 3600.0
-            if elapsed_hours >= 5.75:
-                print(f"Stopping training after {elapsed_hours:.2f} hours (limit: 5.75 hours).")
+        # Early stopping based on eval MSE
+        if eval_metrics["MSE"] > 1.05 * best_mse_eval[0]:
+            print(f"Evaluating stopping at epoch {epoch} due to increasing eval MSE.")
+            if early_stop(eval_mses, configs.EARLY_STOPPING_LENGTH, configs.EARLY_STOPPING_THRESHOLD):
+                early_stopping = True
+                print(f"Early stopping triggered at epoch {epoch}.")
                 with open(f"{model_folder}/logs.txt", "a") as f:
-                    f.write(f"Stopped training after {elapsed_hours:.2f} hours (limit: 5.75 hours).\n")
+                    f.write(f"Early stopping triggered at epoch {epoch}.\n")
                 break
+
+        # Stop training if total wall-clock time exceeds 5 hours
+        elapsed_hours = (time.time() - train_start_time) / 3600.0
+        if elapsed_hours >= 5.75:
+            print(f"Stopping training after {elapsed_hours:.2f} hours (limit: 5.75 hours).")
+            with open(f"{model_folder}/logs.txt", "a") as f:
+                f.write(f"Stopped training after {elapsed_hours:.2f} hours (limit: 5.75 hours).\n")
+            break
     
-    if is_main():
-        print(f"Training completed in {time.time() - train_start_time:.2f} seconds.")
-        if best_mse_eval[1] != (start_epoch + num_epochs):
-            torch.save(model.state_dict(), model_folder + f'/{model_name}_{num_epochs}.pt')
-            torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{num_epochs}.pt')
+    print(f"Training completed in {time.time() - train_start_time:.2f} seconds.")
+    if best_mse_eval[1] != (start_epoch + num_epochs):
+        torch.save(model.state_dict(), model_folder + f'/{model_name}_{num_epochs}.pt')
+        torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{num_epochs}.pt')
 
-            try:
-                best_epoch = best_mse_eval[1]
-                if best_epoch > 0:
-                    if os.path.exists(model_path):
-                        new_model_path = os.path.join(model_folder, f"{model_name}_best_epoch{best_epoch}.pt")
-                        os.replace(model_path, new_model_path)
-                        model_path = new_model_path
-                    if os.path.exists(optimizer_path):
-                        new_optimizer_path = os.path.join(model_folder, f"{model_name}_optimizer_best_epoch{best_epoch}.pt")
-                        os.replace(optimizer_path, new_optimizer_path)
-                        optimizer_path = new_optimizer_path
-            except Exception as e:
-                print(f"Failed to rename best model files: {e}")
+        try:
+            best_epoch = best_mse_eval[1]
+            if best_epoch > 0:
+                if os.path.exists(model_path):
+                    new_model_path = os.path.join(model_folder, f"{model_name}_best_epoch{best_epoch}.pt")
+                    os.replace(model_path, new_model_path)
+                    model_path = new_model_path
+                if os.path.exists(optimizer_path):
+                    new_optimizer_path = os.path.join(model_folder, f"{model_name}_optimizer_best_epoch{best_epoch}.pt")
+                    os.replace(optimizer_path, new_optimizer_path)
+                    optimizer_path = new_optimizer_path
+        except Exception as e:
+            print(f"Failed to rename best model files: {e}")
 
-        # Save epoch number to a txt file
-        with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
-            f.write(f"Best MSE Epoch: {best_mse_eval[1]} with MSE: {best_mse_eval[0]:.4f}\n")
-            f.write(f"Best MAE Epoch: {best_mae_eval[1]} with MAE: {best_mae_eval[0]:.4f}\n")
-            f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")
+    # Save epoch number to a txt file
+    with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
+        f.write(f"Best MSE Epoch: {best_mse_eval[1]} with MSE: {best_mse_eval[0]:.4f}\n")
+        f.write(f"Best MAE Epoch: {best_mae_eval[1]} with MAE: {best_mae_eval[0]:.4f}\n")
+        f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")
 
-        for key in metrics.keys():
-            metrics[key] += eval(key)
+    for key in metrics.keys():
+        metrics[key] += eval(key)
 
-        # Save metrics to a JSON file
-        with open(f"{model_folder}/metrics.json", "w") as f:
-            json.dump(metrics, f)
+    # Save metrics to a JSON file
+    with open(f"{model_folder}/metrics.json", "w") as f:
+        json.dump(metrics, f)
 
-        return metrics, model_path, optimizer_path, early_stopping
+    return metrics, model_path, optimizer_path, early_stopping
 
 
 def to_float(x):
@@ -222,6 +216,3 @@ def early_stop(eval_mses, length=50, threshold=0.0):
 
     slope = num / den
     return slope > threshold
-
-def is_main():
-    return not dist.is_available() or not dist.is_initialized() or dist.get_rank() == 0
