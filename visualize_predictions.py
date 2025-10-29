@@ -1,3 +1,4 @@
+from pyexpat import model
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -85,8 +86,9 @@ if __name__ == "__main__":
     from data_pipeline.data_loader import FieldDataset
     import models.unet as unet
 
-    dataset = FieldDataset(configs.DATASET_PATH).with_field_year()
-    MODEL_NAME = 'UNET_v0.7'  # Change to the desired model variant
+    dataset = FieldDataset(configs.DATASET_PATH, years=configs.VAL_YEARS).with_field_year()
+    MODEL_NAME = 'UNET_v1.2.1'  # Change to the desired model variant
+    MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best.pt'
 
     unet_model = unet.Unet()
-    visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_NAME, dataset, num_images=1)
+    visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_PATH, dataset, num_images=10)

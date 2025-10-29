@@ -69,7 +69,7 @@ def train_and_evaluate_model(model_name):
 
     if early_stopping:
         model_status["finished"] = True
-        chart_metrics(metrics, configs.MODEL_FOLDER, configs.EPOCHS)
+        chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
         visualize_predictions(unet_model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
         save_resfs(configs.MODEL_FOLDER, configs.MODEL_NAME)
 

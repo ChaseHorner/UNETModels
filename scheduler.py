@@ -4,7 +4,7 @@ import os
 import re
 import json
 
-model_names = ['UNET_v1.1', 'UNET_v1.2', 'UNET_v1.3']
+model_names = ['UNET_v1.1.3', 'UNET_v1.2.3', 'UNET_v1.3.3', 'UNET_v1.4.3']
 
 
 
@@ -16,7 +16,8 @@ def submit_training_job(model_name):
     config_path = f"/kuhpc/scratch/kbs/c710h797/UNETModels/outputs/{model_name}/configs.py"
 
     # The bash command to submit the job using `sbatch`
-    command = ['sbatch', f'--export=CONFIG={config_path}', 'run.sh', model_name]
+    command = ['sbatch', f'--export=CONFIG={config_path}', f'--output=outputs/{model_name}/slurm-%j.out',
+               f'--error=outputs/{model_name}/slurm-%j.err', f'--job-name="{model_name}"', 'run.sh', model_name]
     print(f"Submitting job for {model_name}...")
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
