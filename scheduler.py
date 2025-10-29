@@ -4,7 +4,7 @@ import os
 import re
 import json
 
-model_names = ['UNET_v1.1.2', 'UNET_v1.2.2', 'UNET_v1.3.2', 'UNET_v1.4.2']
+model_names = ['UNET_v1.1.3', 'UNET_v1.2.3', 'UNET_v1.3.3', 'UNET_v1.4.3']
 
 
 

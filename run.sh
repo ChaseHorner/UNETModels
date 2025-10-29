@@ -5,6 +5,8 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=190G
 #SBATCH --time=0-06:00:00
-#SBATCH --gres=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --constraint="a100|v100|q6000|q8000|l40|mi210"
+#SBATCH --cpus-per-task=10
 
-python run.py "$1"
+python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=auto run.py "$1"

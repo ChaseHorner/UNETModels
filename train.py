@@ -70,7 +70,7 @@ def evaluate_epoch(model, valid_dataloader, device):
         "SSIM": total_SSIM / total_count,
     }
 
-def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, start_epoch=1, metrics=None):
+def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, start_epoch=1, metrics=None, is_distributed=False):
     if metrics is None:
         metrics = {
             "train_mses": [],
@@ -93,6 +93,10 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
     train_start_time = time.time()
     for epoch in range(start_epoch, start_epoch + num_epochs + 1):
+
+        if is_distributed:
+            train_dataloader.sampler.set_epoch(epoch)
+
         epoch_start_time = time.time()
         # Training
         train_metrics = train_epoch(model, optimizer, criterion, train_dataloader, device)
