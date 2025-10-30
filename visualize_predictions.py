@@ -5,12 +5,15 @@ import numpy as np
 import os
 from config_loader import configs
 from  matplotlib.colors import LinearSegmentedColormap
-from objective_functions import WholeFieldDiff
+import pandas as pd
 
 
 MAX = 150
 cmap=LinearSegmentedColormap.from_list('rg',["r", "w", "g"], N=256)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+hid_map_location = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_data_dryland_jk/table_fields_dryland_QK.csv'
+hid_df = pd.read_csv(hid_map_location)
 
 def visualize_predictions(model, model_folder, model_path, dataset, num_images=10):
     model.load_state_dict(torch.load(model_path))
@@ -88,7 +91,10 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                 plt.colorbar(im, fraction=0.05).ax.tick_params(labelsize=40)
                 plt.axis('off')
 
-            # output_path = os.path.join(model_folder, f"{field_year}.tiff")
+            field, year = field_year.split('_')
+            hid = hid_df.loc[hid_df['field'] == field & hid_df['year'] == year, 'eventidx'].values
+
+            # output_path = os.path.join(model_folder, f"{hid}.tiff")
             output_path = os.path.join(model_folder, f"{field_year}.png")
             plt.savefig(output_path)
 
