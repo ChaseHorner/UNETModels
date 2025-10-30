@@ -46,15 +46,18 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
             mask = np.squeeze(mask[0])  # shape: H x W
             pred_img = np.squeeze(predictions[0])
             target_img = np.squeeze(target[0])
-            pred_total = np.nansum(pred_img)
-            target_total = np.nansum(target[0])
-            field_diff = pred_total - target_total
-            diff_img = pred_img - target_img
+            diff_img = target_img - pred_img
 
             # Apply mask
             pred_masked = np.where(mask == 1.0, pred_img, np.nan)
             target_masked = np.where(mask == 1.0, target_img, np.nan)
             diff_masked = np.where(mask == 1.0, diff_img, np.nan)
+            
+            #Get totals
+            pred_total = np.nansum(pred_masked)
+            target_total = np.nansum(target_masked)
+            field_diff = pred_total - target_total
+            percent_diff = (field_diff / target_total * 100)
             
             #Crop NaN borders for better visualization
             ys, xs = np.where(~np.isnan(target_masked))
@@ -65,22 +68,21 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                 target_masked = target_masked[y_min:y_max+1, x_min:x_max+1]
                 diff_masked = diff_masked[y_min:y_max+1, x_min:x_max+1]
 
-            plt.figure(figsize=(120, 40))
             display_list = [
                 np.clip(pred_masked, 0, MAX),
-                np.clip(target_masked, 0, MAX),
+                np.clip(target_masked, -MAX, MAX),
                 np.clip(diff_masked, -MAX/2, MAX/2)
             ]
-            titles = ['Prediction', 'Target', 'Difference (Pred - Target)']
+            titles = ['Prediction', 'Target', 'Difference (Target-Pred)']
             subtitles = [f'Total Predicted: {pred_total:.2f}',
                          f'Total Target: {target_total:.2f}',
-                         f'Field Difference: {field_diff:.2f}']
+                         f'Field Difference : {field_diff:.2f}\nPercent Difference: {percent_diff:.2f}%']
             
-            
+            plt.figure(figsize=(120, 40))
             for i in range(3):
                 plt.subplot(1, 3, i+1)
                 plt.title(titles[i], fontdict={'fontsize': 100}, pad=60)
-                plt.suptitle(subtitles[i], fontsize=80, y=0.15)
+                plt.text(0.5, -0.18, subtitles[i], fontsize=80, ha='center', transform=plt.gca().transAxes)
                 img = display_list[i]
                 im = plt.imshow(img, cmap=cmap, vmin=-MAX*3/4 , vmax=MAX*3/4) if i == 2 else plt.imshow(img, cmap='Greens', vmin=0, vmax=MAX)
                 plt.colorbar(im, fraction=0.05).ax.tick_params(labelsize=40)
@@ -100,4 +102,4 @@ if __name__ == "__main__":
     MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best_epoch29.pt'
 
     unet_model = unet.Unet()
-    visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_PATH, dataset, num_images=1)
+    visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_PATH, dataset, num_images=10)
