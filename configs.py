@@ -5,7 +5,7 @@ from objective_functions import *
 MODEL_NAME = 'UNET_Base' # The name of the model, used for saving/loading
 MODEL_FOLDER = './outputs/UNET_Base' # The folder where model checkpoints and logs will be saved
 
-BASE_MODEL = 'Unet'  # 'UNet' or 'Ynet'
+BASE_MODEL = 'Unet'  # 'UNet','Unet4', 'Unet16', or 'Ynet'
 DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2'
 TRAIN_YEARS = ['2020', '2021', '2022', '2023']
 VAL_YEARS = ['2024']

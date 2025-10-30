@@ -3,6 +3,8 @@ from torch.utils.data import DataLoader
 from chart_metrics import chart_metrics
 from config_loader import configs
 import models.unet as unet
+import models.unet4 as unet4
+import models.unet16 as unet16
 import os
 import torch.optim as optim
 from train import train_model
@@ -36,19 +38,23 @@ def train_and_evaluate_model(model_name, terminal=False):
     train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
 
-    unet_model = unet.Unet()
-    unet_model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
+    model = unet.Unet() if configs.MODEL_TYPE == 'unet' else \
+            unet4.Unet4() if configs.MODEL_TYPE == 'unet4' else \
+            unet16.Unet16() if configs.MODEL_TYPE == 'unet16'\
+            else None
 
-    optimizer = optim.AdamW(unet_model.parameters(), lr=(tune_lr if tune_lr is not None else configs.LEARNING_RATE), betas=[configs.BETA1, 0.999])
+    model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
+
+    optimizer = optim.AdamW(model.parameters(), lr=(tune_lr if tune_lr is not None else configs.LEARNING_RATE), betas=[configs.BETA1, 0.999])
 
 
     if model_status["model_path"]:
-        unet_model.load_state_dict(torch.load(model_status["model_path"]))
+        model.load_state_dict(torch.load(model_status["model_path"]))
         if tune_lr is not None and model_status["optimizer_path"]:
             optimizer.load_state_dict(torch.load(model_status["optimizer_path"]))
 
     metrics, model_path, optimizer_path, early_stopping, last_epoch = train_model(
-        unet_model,
+        model,
         configs.MODEL_NAME,
         configs.MODEL_FOLDER,
         optimizer,
@@ -78,12 +84,12 @@ def train_and_evaluate_model(model_name, terminal=False):
     if early_stopping:
         model_status["finished"] = True
         chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
-        visualize_predictions(unet_model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
+        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
         save_resfs(configs.MODEL_FOLDER, configs.MODEL_NAME)
 
     elif terminal:
         chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
-        visualize_predictions(unet_model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
+        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
 
 
 if __name__ == "__main__":
