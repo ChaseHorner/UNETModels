@@ -88,6 +88,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     model_path = model_folder + f'/{model_name}_best.pt'
     optimizer_path = model_folder + f'/{model_name}_optimizer_best.pt'   
     early_stopping = False
+    last_epoch = start_epoch + num_epochs - 1
     best_mse_eval = (float('inf'), -1)  # (loss, epoch)
     best_mae_eval = (float('inf'), -1)
     best_ssim_eval = (-float('inf'), -1)
@@ -149,6 +150,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             print(f"Evaluating stopping at epoch {epoch} due to increasing eval MSE.")
             if early_stop(eval_mses, configs.EARLY_STOPPING_LENGTH, configs.EARLY_STOPPING_THRESHOLD):
                 early_stopping = True
+                last_epoch = epoch
                 print(f"Early stopping triggered at epoch {epoch}.")
                 with open(f"{model_folder}/logs.txt", "a") as f:
                     f.write(f"Early stopping triggered at epoch {epoch}.\n")
@@ -194,7 +196,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     with open(f"{model_folder}/metrics.json", "w") as f:
         json.dump(metrics, f)
 
-    return metrics, model_path, optimizer_path, early_stopping
+    return metrics, model_path, optimizer_path, early_stopping, last_epoch
 
 
 def to_float(x):

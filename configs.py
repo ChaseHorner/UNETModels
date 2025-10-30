@@ -43,6 +43,7 @@ EARLY_STOPPING_THRESHOLD = 0.0
 CRITERION = MSE()
 OPTIMIZER = 'AdamW' # Not impmlemented yet, just a label
 LEARNING_RATE = 1e-4
+TUNE_LR = None
 BETA1 = 0.9
 
 # ===== Inputs ======

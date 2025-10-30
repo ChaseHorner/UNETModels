@@ -4,6 +4,7 @@
 #SBATCH --mail-user=c710h797@ku.edu
 #SBATCH --ntasks=1
 #SBATCH --mem=120G
+#SBATCH --time=7-00:00:00
 #SBATCH --output=outputs/slurm-%j.out
 #SBATCH --error=outputs/slurm-%j.err
 

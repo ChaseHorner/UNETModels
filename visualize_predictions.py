@@ -78,6 +78,7 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                 plt.colorbar(im, fraction=0.05).ax.tick_params(labelsize=40)
                 plt.axis('off')
 
+            # output_path = os.path.join(model_folder, f"{field_year}.tiff")
             output_path = os.path.join(model_folder, f"{field_year}.png")
             plt.savefig(output_path)
 
@@ -87,8 +88,8 @@ if __name__ == "__main__":
     import models.unet as unet
 
     dataset = FieldDataset(configs.DATASET_PATH, years=configs.VAL_YEARS).with_field_year()
-    MODEL_NAME = 'UNET_v1.2.1'  # Change to the desired model variant
-    MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best.pt'
+    MODEL_NAME = 'UNET_v1.3.3'  # Change to the desired model variant
+    MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best_epoch29.pt'
 
     unet_model = unet.Unet()
     visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_PATH, dataset, num_images=10)
