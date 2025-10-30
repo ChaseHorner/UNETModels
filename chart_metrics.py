@@ -40,13 +40,19 @@ def chart_metrics(metrics, model_folder, EPOCHS):
     plt.title('SSIM')
 
     # Field Difference
-    plt.subplot(3, 2, 5)
-    plt.plot(range(1, EPOCHS + 1), metrics["train_field_diffs"], label='Field Diff Training', color='purple', linestyle='--')
-    plt.plot(range(1, EPOCHS + 1), metrics["eval_field_diffs"], label='Field Diff Validation', color='purple')
-    plt.xlabel('Epochs')
-    plt.ylabel('Field Difference')
-    plt.legend()
-    plt.title('Field Difference')
+    if "train_field_diffs" in metrics and "eval_field_diffs" in metrics:
+        plt.subplot(3, 2, 5)
+        plt.plot(range(1, EPOCHS + 1), metrics["train_field_diffs"], label='Field Diff Training', color='purple', linestyle='--')
+        plt.plot(range(1, EPOCHS + 1), metrics["eval_field_diffs"], label='Field Diff Validation', color='purple')
+        plt.xlabel('Epochs')
+        plt.ylabel('Field Difference')
+        plt.legend()
+        plt.title('Field Difference')
+
+    else:
+        plt.subplot(3, 2, 5)
+        plt.text(0.5, 0.5, 'Field Difference data not available', horizontalalignment='center', verticalalignment='center', fontsize=16)
+        plt.axis('off')
 
     plt.tight_layout()
     plt.savefig(model_folder + '/loss.png')

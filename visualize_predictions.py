@@ -5,6 +5,7 @@ import numpy as np
 import os
 from config_loader import configs
 from  matplotlib.colors import LinearSegmentedColormap
+from objective_functions import WholeFieldDiff
 
 
 MAX = 150
@@ -45,6 +46,9 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
             mask = np.squeeze(mask[0])  # shape: H x W
             pred_img = np.squeeze(predictions[0])
             target_img = np.squeeze(target[0])
+            pred_total = np.nansum(pred_img)
+            target_total = np.nansum(target[0])
+            field_diff = pred_total - target_total
             diff_img = pred_img - target_img
 
             # Apply mask
@@ -68,11 +72,15 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                 np.clip(diff_masked, -MAX/2, MAX/2)
             ]
             titles = ['Prediction', 'Target', 'Difference (Pred - Target)']
+            subtitles = [f'Total Predicted: {pred_total:.2f}',
+                         f'Total Target: {target_total:.2f}',
+                         f'Field Difference: {field_diff:.2f}']
             
             
             for i in range(3):
                 plt.subplot(1, 3, i+1)
                 plt.title(titles[i], fontdict={'fontsize': 100}, pad=60)
+                plt.suptitle(subtitles[i], fontsize=80, y=0.15)
                 img = display_list[i]
                 im = plt.imshow(img, cmap=cmap, vmin=-MAX*3/4 , vmax=MAX*3/4) if i == 2 else plt.imshow(img, cmap='Greens', vmin=0, vmax=MAX)
                 plt.colorbar(im, fraction=0.05).ax.tick_params(labelsize=40)
@@ -92,4 +100,4 @@ if __name__ == "__main__":
     MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best_epoch29.pt'
 
     unet_model = unet.Unet()
-    visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_PATH, dataset, num_images=10)
+    visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_PATH, dataset, num_images=1)
