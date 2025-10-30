@@ -38,10 +38,10 @@ def train_and_evaluate_model(model_name, terminal=False):
     train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
 
-    model = unet.Unet() if configs.MODEL_TYPE == 'unet' else \
+    model = unet.Unet() if configs.MODEL_TYPE == 'unet8' else \
             unet4.Unet4() if configs.MODEL_TYPE == 'unet4' else \
             unet16.Unet16() if configs.MODEL_TYPE == 'unet16'\
-            else None
+            else unet.Unet()
 
     model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
 
