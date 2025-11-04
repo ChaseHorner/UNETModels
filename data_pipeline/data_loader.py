@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 import time
 
 class FieldDataset(Dataset):
-    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'hmask'], years= None):
+    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'auc','hmask'], years= None):
         '''
         root_dir: folder with subfolders per sample, each containing .pt files
         input_keys: list of keys for input tensors        '''
@@ -35,8 +35,10 @@ class FieldDataset(Dataset):
         'sentinel' : torch.load(os.path.join(sample_dir, 's2.pt')),
         # 'weather_in_season' : torch.load(os.path.join(sample_dir, 'in_season.pt')),  
         # 'weather_pre_season' : torch.load(os.path.join(sample_dir, 'pre_season.pt')),
+
         'target' : torch.load(os.path.join(sample_dir, 'hrvst.pt')),
         'hmask' : torch.load(os.path.join(sample_dir, 'hmask.pt')),
+        'auc' : torch.load(os.path.join(sample_dir, 'auc.pt')),
         'field_year' : sample_dir.split(os.sep)[-2] + '_' + sample_dir.split(os.sep)[-1]
         }
 
@@ -57,11 +59,12 @@ if __name__ == '__main__':
     dataset = FieldDataset(r'Z:\prepped_data\processed_tensors', input_keys=['lidar', 'sentinel'])
     dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
 
-    for lidar, sentinel, in_season, pre_season, target in dataloader:
+    for lidar, sentinel, in_season, pre_season, target, auc in dataloader:
         print(f'Lidar batch shape: {lidar.shape}')
         print(f'Sentinel batch shape: {sentinel.shape}')
         print(f'In-season weather batch shape: {in_season.shape}')
         print(f'Pre-season weather batch shape: {pre_season.shape}')
+        print(f'AUC batch shape: {auc.shape}')
         print(f'Target batch shape: {target.shape}')
         break  # Just test one batch
     end_time = time.time()

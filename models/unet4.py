@@ -42,12 +42,18 @@ class Unet4(nn.Module):
         x = kwargs.get('lidar')  # (b, lidar_channels, H, W) also called i1 or x1
         s2_data = kwargs.get('sentinel')
         hmsk = kwargs.get('hmask')
+        auc = kwargs.get('auc')
 
         x = self.initial_conv(x)
         x = self.enc_1(x)
         x = self.enc_2(x)
 
-        x2 = torch.cat([x, s2_data, hmsk], dim=1)
+        inputs = [x]
+        for name in [s2_data, hmsk, auc]:
+            if name is not None:
+                inputs.append(name)
+
+        x2 = torch.cat(inputs, dim=1)
         x3 = self.enc_3(x2)
         x4 = self.enc_4(x3)
         x5 = self.enc_5(x4)

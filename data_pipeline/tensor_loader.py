@@ -7,11 +7,12 @@ from tqdm import tqdm
 
 
 folder_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_dat_drylnd_jk"
-save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_"
+save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2"
 
 TARGET_SIZE = [1, 256, 256]
 LIDAR_SIZE = [5, 2560, 2560]
 S2_SIZE = [231, 256, 256]  # 11 bands * 21 periods + 1 yield mask
+AUC_SIZE = [15, 256, 256] # 15 time periods
 
 
 def make_completed_tensors(save_path):
@@ -86,6 +87,7 @@ def _load_field_wrapper(args):
 def load_field(field_path, output_path, dtype=torch.float32):
     lidar_tensors = []
     s2_tensors = []
+    auc_tensors = []
 
     for data_type in os.listdir(field_path):
         data_type_path = os.path.join(field_path, data_type)
@@ -96,46 +98,56 @@ def load_field(field_path, output_path, dtype=torch.float32):
         for file in data:
             file_path = os.path.join(data_type_path, file)
 
-            if "hmsk" in file and file.endswith('.tif'):
+            if "NDVI_AuC" in file and file.endswith('.tif'):
                 with rasterio.open(file_path) as src:
                         arr = src.read().astype(np.float32)
                         if arr.ndim == 2:
                             arr = arr[None, :, :]  # add channel dimension
-                        hmask_tensor = torch.from_numpy(arr).type(dtype)
+                        auc_tensors.append(torch.from_numpy(arr).type(dtype))
 
-            elif "hrvst" in file and file.endswith('.tif'):
-                with rasterio.open(file_path) as src:
-                        arr = src.read().astype(np.float32)
-                        if arr.ndim == 2:
-                            arr = arr[None, :, :]  # add channel dimension
-                        hrvst_tensor = torch.from_numpy(arr).type(dtype)
+    #         elif "hmsk" in file and file.endswith('.tif'):
+    #             with rasterio.open(file_path) as src:
+    #                     arr = src.read().astype(np.float32)
+    #                     if arr.ndim == 2:
+    #                         arr = arr[None, :, :]  # add channel dimension
+    #                     hmask_tensor = torch.from_numpy(arr).type(dtype)
 
-            elif file.endswith('.tif') and data_type == 's2':
-                with rasterio.open(file_path) as src:
-                    arr = src.read().astype(np.float32)
-                    if arr.ndim == 2:
-                        arr = arr[None, :, :]  # add channel dimension
-                    tensor = torch.from_numpy(arr).type(dtype)
-                    s2_tensors.append(tensor)
+    #         elif "hrvst" in file and file.endswith('.tif'):
+    #             with rasterio.open(file_path) as src:
+    #                     arr = src.read().astype(np.float32)
+    #                     if arr.ndim == 2:
+    #                         arr = arr[None, :, :]  # add channel dimension
+    #                     hrvst_tensor = torch.from_numpy(arr).type(dtype)
 
-            elif file.endswith('.tif') and data_type == 'lidar':
-                with rasterio.open(file_path) as src:
-                    arr = src.read().astype(np.float32)
-                    if arr.ndim == 2:
-                        arr = arr[None, :, :]  # add channel dimension
-                    tensor = torch.from_numpy(arr).type(dtype)
-                    lidar_tensors.append(tensor)
+    #         elif file.endswith('.tif') and data_type == 's2':
+    #             with rasterio.open(file_path) as src:
+    #                 arr = src.read().astype(np.float32)
+    #                 if arr.ndim == 2:
+    #                     arr = arr[None, :, :]  # add channel dimension
+    #                 tensor = torch.from_numpy(arr).type(dtype)
+    #                 s2_tensors.append(tensor)
 
-    s2_tensor = torch.cat(s2_tensors, dim=0)
-    lidar_tensor = torch.cat(lidar_tensors, dim=0)
+    #         elif file.endswith('.tif') and data_type == 'lidar':
+    #             with rasterio.open(file_path) as src:
+    #                 arr = src.read().astype(np.float32)
+    #                 if arr.ndim == 2:
+    #                     arr = arr[None, :, :]  # add channel dimension
+    #                 tensor = torch.from_numpy(arr).type(dtype)
+    #                 lidar_tensors.append(tensor)
+
+    # s2_tensor = torch.cat(s2_tensors, dim=0)
+    # lidar_tensor = torch.cat(lidar_tensors, dim=0)
+    auc_tensor = torch.cat(auc_tensors, dim=0)
 
     shape_dict = {"lidar" : LIDAR_SIZE,
                     "s2" : S2_SIZE,
                     "hmask" : TARGET_SIZE,
                     "hrvst" : TARGET_SIZE,
+                    "auc" : AUC_SIZE
                     }
 
-    for data_type, final_tensor in zip(['lidar', 's2', 'hmask', 'hrvst'], [lidar_tensor, s2_tensor, hmask_tensor, hrvst_tensor]):
+    # for data_type, final_tensor in zip(['lidar', 's2', 'hmask', 'hrvst', 'auc'], [lidar_tensor, s2_tensor, hmask_tensor, hrvst_tensor, auc_tensor]):
+    for data_type, final_tensor in zip(['auc'], [auc_tensor]):
         if data_type in shape_dict:
             expected_shape = shape_dict[data_type]
             if list(final_tensor.shape) != expected_shape:
