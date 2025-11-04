@@ -12,8 +12,8 @@ MAX = 150
 cmap=LinearSegmentedColormap.from_list('rg',["r", "w", "g"], N=256)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-hid_map_location = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_data_dryland_jk/table_fields_dryland_QK.csv'
-hid_df = pd.read_csv(hid_map_location)
+#hid_map_location = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_data_dryland_jk/table_fields_dryland_QK.csv'
+#hid_df = pd.read_csv(hid_map_location)
 
 def visualize_predictions(model, model_folder, model_path, dataset, num_images=10):
     model.load_state_dict(torch.load(model_path))
@@ -81,7 +81,7 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                          f'Total Target: {target_total:.2f}',
                          f'Field Difference : {field_diff:.2f}\nPercent Difference: {percent_diff:.2f}%']
             
-            plt.figure(figsize=(120, 40))
+            plt.figure(figsize=(120, 60), constrained_layout=True)
             for i in range(3):
                 plt.subplot(1, 3, i+1)
                 plt.title(titles[i], fontdict={'fontsize': 100}, pad=60)
@@ -91,8 +91,8 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                 plt.colorbar(im, fraction=0.05).ax.tick_params(labelsize=40)
                 plt.axis('off')
 
-            field, year = field_year.split('_')
-            hid = hid_df.loc[hid_df['field'] == field & hid_df['year'] == year, 'eventidx'].values
+            #field, year = field_year.split('_')
+            #hid = hid_df.loc[hid_df['field'] == field & hid_df['year'] == year, 'eventidx'].values
 
             # output_path = os.path.join(model_folder, f"{hid}.tiff")
             output_path = os.path.join(model_folder, f"{field_year}.png")
@@ -101,11 +101,11 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
 
 if __name__ == "__main__":
     from data_pipeline.data_loader import FieldDataset
-    import models.unet as unet
+    import models.unet4 as unet
 
     dataset = FieldDataset(configs.DATASET_PATH, years=configs.VAL_YEARS).with_field_year()
-    MODEL_NAME = 'UNET_v1.3.3'  # Change to the desired model variant
-    MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best_epoch29.pt'
+    MODEL_NAME = 'unet4a'  # Change to the desired model variant
+    MODEL_PATH = f'outputs/{MODEL_NAME}/{MODEL_NAME}_best_epoch195.pt'
 
-    unet_model = unet.Unet()
+    unet_model = unet.Unet4()
     visualize_predictions(unet_model, f'outputs/{MODEL_NAME}', MODEL_PATH, dataset, num_images=10)

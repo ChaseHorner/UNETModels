@@ -38,9 +38,9 @@ def train_and_evaluate_model(model_name, terminal=False):
     train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
 
-    model = unet.Unet() if configs.MODEL_TYPE == 'unet8' else \
-            unet4.Unet4() if configs.MODEL_TYPE == 'unet4' else \
-            unet16.Unet16() if configs.MODEL_TYPE == 'unet16'\
+    model = unet.Unet() if configs.BASE_MODEL == 'unet8' else \
+            unet4.Unet4() if configs.BASE_MODEL == 'unet4' else \
+            unet16.Unet16() if configs.BASE_MODEL == 'unet16'\
             else unet.Unet()
 
     model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
@@ -50,7 +50,7 @@ def train_and_evaluate_model(model_name, terminal=False):
 
     if model_status["model_path"]:
         model.load_state_dict(torch.load(model_status["model_path"]))
-        if tune_lr is not None and model_status["optimizer_path"]:
+        if tune_lr is None and model_status["optimizer_path"]:
             optimizer.load_state_dict(torch.load(model_status["optimizer_path"]))
 
     metrics, model_path, optimizer_path, early_stopping, last_epoch = train_model(
@@ -77,9 +77,6 @@ def train_and_evaluate_model(model_name, terminal=False):
 
     os.makedirs(configs.MODEL_FOLDER, exist_ok=True)
 
-    json_path = os.path.join(configs.MODEL_FOLDER, f"status.json")
-    with open(json_path, "w") as jf:
-        json.dump(model_status, jf, default=str, indent=2)
 
     if early_stopping:
         model_status["finished"] = True
@@ -90,6 +87,10 @@ def train_and_evaluate_model(model_name, terminal=False):
     elif terminal:
         chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
         visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
+
+    json_path = os.path.join(configs.MODEL_FOLDER, f"status.json")
+    with open(json_path, "w") as jf:
+       json.dump(model_status, jf, default=str, indent=2)
 
 
 if __name__ == "__main__":

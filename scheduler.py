@@ -5,9 +5,11 @@ import re
 import json
 
 # model_names = ['UNET_v1.1.3', 'UNET_v1.2.3', 'UNET_v1.3.3', 'UNET_v1.4.3']
-model_names = ['unet4a', 'unet4b', 'unet4c', 'unet4d', 'unet4e', 'unet8a', 'unet8b', 'unet8c', 'unet8d', 'unet8e', 
-               'unet16a', 'unet16b', 'unet16c', 'unet16d', 'unet16e']
+# model_names = ['unet4a', 'unet4b', 'unet4c', 'unet4d', 'unet4e', 'unet8a', 'unet8b', 'unet8c', 'unet8d', 'unet8e', 
+#                'unet16a', 'unet16b', 'unet16c', 'unet16d', 'unet16e',
+#                'UNET_v1.3.3']
 
+model_names = ['unet4a', 'unet4b','unet16a', 'unet16c', 'unet16d']
 
 
 def submit_training_job(model_name):

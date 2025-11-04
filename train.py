@@ -94,10 +94,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     optimizer_path = model_folder + f'/{model_name}_optimizer_best.pt'   
     early_stopping = False
     last_epoch = start_epoch + num_epochs - 1
-    best_mse_eval = (float('inf'), -1)  # (loss, epoch)
-    best_mae_eval = (float('inf'), -1)
-    best_ssim_eval = (-float('inf'), -1)
-    best_field_diff_eval = (float('inf'), -1)
+    best_epoch = {'epoch': -1, 'MSE': float('inf'), 'MAE': float('inf'), 'SSIM': float('-inf'), 'field_diff': float('inf')}
 
     train_start_time = time.time()
     for epoch in range(start_epoch, start_epoch + num_epochs):
@@ -120,19 +117,14 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         eval_field_diffs.append(to_float(eval_metrics["field_diff"]))
 
         # Save best model based on eval loss
-        if best_mse_eval[0] > eval_metrics["MSE"]:
+        if best_epoch['MSE'] > eval_metrics["MSE"]:
             torch.save(model.state_dict(), model_path)
             torch.save(optimizer.state_dict(), optimizer_path)
-            best_mse_eval = (eval_metrics["MSE"], epoch)
-        # Save best model based on eval MAE
-        if best_mae_eval[0] > eval_metrics["MAE"]:
-            best_mae_eval = (eval_metrics["MAE"], epoch)
-        # Save best model based on eval SSIM
-        if best_ssim_eval[0] < eval_metrics["SSIM"]:
-            best_ssim_eval = (eval_metrics["SSIM"], epoch)
-        # Save best model based on eval field difference
-        if best_field_diff_eval[0] > eval_metrics["field_diff"]:
-            best_field_diff_eval = (eval_metrics["field_diff"], epoch)
+            best_epoch['epoch'] = epoch
+            best_epoch['MSE'] = eval_metrics["MSE"]
+            best_epoch['MAE'] = eval_metrics["MAE"]
+            best_epoch['SSIM'] = eval_metrics["SSIM"]
+            best_epoch['field_diff'] = eval_metrics["field_diff"]
 
         # Print and log loss at end of epochs
         with open(f"{model_folder}/logs.txt", "a") as f:
@@ -157,7 +149,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         print("-" * 59)
 
         # Early stopping based on eval MSE
-        if eval_metrics["MSE"] > 1.05 * best_mse_eval[0]:
+        if eval_metrics["MSE"] > 1.05 * best_epoch['MSE']:
             print(f"Evaluating stopping at epoch {epoch} due to increasing eval MSE.")
             if early_stop(eval_mses, configs.EARLY_STOPPING_LENGTH, configs.EARLY_STOPPING_THRESHOLD):
                 early_stopping = True
@@ -176,12 +168,12 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             break
     
     print(f"Training completed in {time.time() - train_start_time:.2f} seconds.")
-    if best_mse_eval[1] != (start_epoch + num_epochs):
+    if best_epoch['epoch'] != (start_epoch + num_epochs):
         torch.save(model.state_dict(), model_folder + f'/{model_name}_{num_epochs}.pt')
         torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{num_epochs}.pt')
 
         try:
-            best_epoch = best_mse_eval[1]
+            best_epoch = best_epoch['epoch']
             if best_epoch > 0:
                 if os.path.exists(model_path):
                     new_model_path = os.path.join(model_folder, f"{model_name}_best_epoch{best_epoch}.pt")
@@ -196,10 +188,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
     # Save epoch number to a txt file
     with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
-        f.write(f"Best MSE Epoch: {best_mse_eval[1]} with MSE: {best_mse_eval[0]:.4f}\n")
-        f.write(f"Best MAE Epoch: {best_mae_eval[1]} with MAE: {best_mae_eval[0]:.4f}\n")
-        f.write(f"Best SSIM Epoch: {best_ssim_eval[1]} with SSIM: {best_ssim_eval[0]:.4f}\n")
-        f.write(f"Best Field Diff Epoch: {best_field_diff_eval[1]} with Field Diff: {best_field_diff_eval[0]:.4f}\n")
+        f.write(f"Best Epoch: {best_epoch['epoch']} with MSE: {best_epoch['MSE']:.4f} | MAE: {best_epoch['MAE']:.4f} | SSIM: {best_epoch['SSIM']:.4f} | Field Diff: {best_epoch['field_diff']:.4f}\n")
 
     for key in metrics.keys():
         metrics[key] += eval(key)
