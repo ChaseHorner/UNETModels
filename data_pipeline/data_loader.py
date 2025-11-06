@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 import time
 
 class FieldDataset(Dataset):
-    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'auc','hmask'], years= None):
+    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'auc', 'hmask'], years= None):
         '''
         root_dir: folder with subfolders per sample, each containing .pt files
         input_keys: list of keys for input tensors        '''
@@ -29,6 +29,12 @@ class FieldDataset(Dataset):
     def __getitem__(self, idx):
         sample_dir = self.samples[idx]
 
+        #extract from hid.txt
+        hid_txt_path = os.path.join(sample_dir, 'hid.txt')
+        if os.path.exists(hid_txt_path):
+            with open(hid_txt_path, 'r') as f:
+                hid = f.read().strip()
+
         features = {
 
         'lidar' : torch.load(os.path.join(sample_dir, 'lidar.pt')),
@@ -38,7 +44,8 @@ class FieldDataset(Dataset):
 
         'target' : torch.load(os.path.join(sample_dir, 'hrvst.pt')),
         'hmask' : torch.load(os.path.join(sample_dir, 'hmask.pt')),
-        'auc' : torch.load(os.path.join(sample_dir, 'auc.pt')),
+        'auc' : torch.load(os.path.join(sample_dir, 'auc_150_300_only.pt')),
+        'hid' : hid,
         'field_year' : sample_dir.split(os.sep)[-2] + '_' + sample_dir.split(os.sep)[-1]
         }
 
@@ -47,10 +54,10 @@ class FieldDataset(Dataset):
 
         return returns
     
-    def with_field_year(self):
+    def with_field_year_hid(self):
         new_dataset = FieldDataset.__new__(FieldDataset)
         new_dataset.samples = self.samples 
-        new_dataset.input_keys = self.input_keys + ['field_year']
+        new_dataset.input_keys = self.input_keys + ['field_year'] + ['hid']
         new_dataset.root_dir = self.root_dir
         return new_dataset
 

@@ -81,12 +81,12 @@ def train_and_evaluate_model(model_name, terminal=False):
     if early_stopping:
         model_status["finished"] = True
         chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
-        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
+        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year_hid(), output_type='tiff')
         save_resfs(configs.MODEL_FOLDER, configs.MODEL_NAME)
 
     elif terminal:
         chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
-        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year())
+        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year_hid())
 
     json_path = os.path.join(configs.MODEL_FOLDER, f"status.json")
     with open(json_path, "w") as jf:
