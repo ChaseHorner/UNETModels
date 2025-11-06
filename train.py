@@ -173,10 +173,9 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{num_epochs}.pt')
 
         try:
-            best_epoch = best_epoch['epoch']
-            if best_epoch > 0:
+            if best_epoch['epoch'] > 0:
                 if os.path.exists(model_path):
-                    new_model_path = os.path.join(model_folder, f"{model_name}_best_epoch{best_epoch}.pt")
+                    new_model_path = os.path.join(model_folder, f"{model_name}_best_epoch{best_epoch['epoch']}.pt")
                     os.replace(model_path, new_model_path)
                     model_path = new_model_path
                 if os.path.exists(optimizer_path):

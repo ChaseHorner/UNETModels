@@ -9,7 +9,9 @@ import json
 #                'unet16a', 'unet16b', 'unet16c', 'unet16d', 'unet16e',
 #                'UNET_v1.3.3']
 
-model_names = ['unet4a', 'unet4b','unet16a', 'unet16c', 'unet16d']
+# model_names = ['unet4a', 'unet4b','unet16a', 'unet16c', 'unet16d']
+model_names = ['auc4a', 'auc8a','auc16a']
+
 
 
 def submit_training_job(model_name):
