@@ -56,9 +56,15 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
             
             #Get totals
             pred_total = np.nansum(pred_masked)
+            pred_bpa = np.nanmean(pred_masked)
+
             target_total = np.nansum(target_masked)
+            target_bpa = np.nanmean(target_masked)
+
             field_diff = pred_total - target_total
-            percent_diff = (field_diff / target_total * 100)
+
+            percent_diff = field_diff / target_total * 100
+            bpa_diff = (pred_bpa - target_bpa) / target_bpa * 100
             
             #Crop NaN borders for better visualization
             ys, xs = np.where(~np.isnan(target_masked))
@@ -75,8 +81,8 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                 np.clip(diff_masked, -MAX/2, MAX/2)
             ]
             titles = ['Prediction', 'Target', 'Difference (Target-Pred)']
-            subtitles = [f'Total Predicted: {pred_total:.2f}',
-                         f'Total Target: {target_total:.2f}',
+            subtitles = [f'Total Predicted: {pred_total:.2f} | BPA: {pred_bpa:.2f}',
+                         f'Total Target: {target_total:.2f} | BPA: {target_bpa:.2f}',
                          f'Field Difference : {field_diff:.2f}\nPercent Difference: {percent_diff:.2f}%']
             
             plt.figure(figsize=(120, 60), constrained_layout=True)
@@ -104,4 +110,4 @@ if __name__ == "__main__":
     MODEL_PATH = f'{configs.MODEL_FOLDER}/{MODEL_NAME}_best_epoch195.pt'
 
     unet_model = unet.Unet4()
-    visualize_predictions(unet_model, configs.MODEL_FOLDER, MODEL_PATH, dataset, num_images=10, output_type='png')
+    visualize_predictions(unet_model, configs.MODEL_FOLDER, MODEL_PATH, dataset, num_images=1, output_type='png')

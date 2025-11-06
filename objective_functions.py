@@ -64,3 +64,16 @@ class WholeFieldDiff(nn.Module):
     def forward(self, predictions, target, mask):
         diff = torch.sum(target * mask) - torch.sum(predictions * mask)
         return torch.abs(diff)
+    
+class BushelsPerAcreErrors(nn.Module):
+    def forward(self, predictions, target, mask):
+        count = torch.sum(mask).item()
+
+        pred_avg = torch.sum(predictions * mask) / count
+        target_avg = torch.sum(target * mask) / count
+
+        MSE = (pred_avg - target_avg) ** 2
+        RMSE = MSE ** 0.5
+        MAE = torch.abs(pred_avg - target_avg)
+
+        return MSE, RMSE, MAE

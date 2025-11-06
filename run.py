@@ -80,8 +80,19 @@ def train_and_evaluate_model(model_name, terminal=False):
 
     if early_stopping:
         model_status["finished"] = True
-        chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
-        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year_hid(), output_type='tiff')
+
+        # Generate charts and visualizations, handling exceptions gracefully
+        try:
+            chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
+        except Exception as e:
+            print(f"Error generating charts: {e}")
+
+        try:
+            visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year_hid(), output_type='tiff')
+        except Exception as e:
+            print(f"Error visualizing predictions: {e}")
+
+        #Save to the ResFS
         save_resfs(configs.MODEL_FOLDER, configs.MODEL_NAME)
 
     elif terminal:
