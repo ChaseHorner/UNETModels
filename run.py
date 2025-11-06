@@ -19,9 +19,9 @@ import argparse
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def train_and_evaluate_model(model_name, terminal=False):
+def train_and_evaluate_model(model_path, terminal=False):
     # Load model status
-    model_status_path = f'outputs/{model_name}/status.json'
+    model_status_path = f'outputs/{model_path}/status.json'
     with open(model_status_path, "r") as f:
         model_status = json.load(f)
 
@@ -106,8 +106,8 @@ def train_and_evaluate_model(model_name, terminal=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train and evaluate a model.')
-    parser.add_argument('model_name', type=str, help='The name of the model to train.')
+    parser.add_argument('model_path', type=str, help='The path of the model to train (from outputs/).')
     parser.add_argument('--tune_lr', type=float, help='Learning rate to use for tuning.')
     args = parser.parse_args()
 
-    train_and_evaluate_model(args.model_name)
+    train_and_evaluate_model(args.model_path)
