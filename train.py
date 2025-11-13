@@ -6,25 +6,33 @@ from objective_functions import *
 import os
 
 def train_epoch(model, optimizer, criterion, train_dataloader, device):
+    '''Train the model for one epoch.'''
+    
     model.train()
+
+    # Track running metrics
     running_MSE, running_MAE, running_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
 
+    # Reset gradients at the start of the epoch
     optimizer.zero_grad()
 
+    # Loop over batches
     for step, batch in enumerate(train_dataloader):
         inputs = {k: v.to(device) for k, v in batch.items()}
         target = inputs.pop("target")
         predictions = model(**inputs)
 
+        # Compute loss and backpropagate
         count = (inputs.get('hmask') == 1.0).sum().item()
         loss = criterion(predictions, target, inputs.get('hmask'))
         (loss * count / configs.ACCUMULATION_STEPS).backward()
 
+        # Update weights after accumulation steps
         if (step + 1) % configs.ACCUMULATION_STEPS == 0:
             optimizer.step()
             optimizer.zero_grad()
 
-        
+        # Update running metrics
         running_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
         running_MAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
         running_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
@@ -32,6 +40,7 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
 
         print(f"Training Step [{step+1}/{len(train_dataloader)}]", end="\r")
 
+    # Final weight update if there are remaining gradients
     if (step + 1) % configs.ACCUMULATION_STEPS != 0:
         optimizer.step()
         optimizer.zero_grad()
@@ -46,17 +55,24 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
 
 
 def evaluate_epoch(model, valid_dataloader, device):
-    model.eval()
-    total_MSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
-    total_bpa_MSE, total_bpa_RMSE, total_bpa_MAE = 0.0, 0.0, 0.0
+    '''Evaluate the model for one epoch.'''
 
+    model.eval()
+    
+    # Track running metrics
+    total_MSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
+    total_bpa_MSE, total_bpa_MAE = 0.0, 0.0
+
+    # Disable gradient computation for evaluation
     with torch.no_grad():
+        # Loop over batches
         for batch in valid_dataloader:
             inputs = {k: v.to(device) for k, v in batch.items()}
 
             target = inputs.pop("target")
             predictions = model(**inputs) 
         
+            # Update running metrics
             count = (inputs.get('hmask') == 1.0).sum().item()
 
             total_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
@@ -64,18 +80,18 @@ def evaluate_epoch(model, valid_dataloader, device):
             total_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
             total_count += count
 
-            bpa_MSE, bpa_RMSE, bpa_MAE = BushelsPerAcreErrors()(predictions, target, inputs.get('hmask'))
+            bpa_MSE, bpa_MAE = BushelsPerAcreErrors()(predictions, target, inputs.get('hmask'))
             total_bpa_MSE += bpa_MSE
-            total_bpa_RMSE += bpa_RMSE
             total_bpa_MAE += bpa_MAE
 
+    # Compute the average loss across all pixels seen in the epoch
     return {
         "MSE": total_MSE / total_count,
         "RMSE": (total_MSE / total_count) ** 0.5,
         "MAE": total_MAE / total_count,
         "SSIM": total_SSIM / total_count,
         "bpa_MSE": total_bpa_MSE / len(valid_dataloader.dataset),
-        "bpa_RMSE": total_bpa_RMSE / len(valid_dataloader.dataset),
+        "bpa_RMSE": (total_bpa_MSE / len(valid_dataloader.dataset)) ** 0.5,
         "bpa_MAE": total_bpa_MAE / len(valid_dataloader.dataset)
     }
 
@@ -101,7 +117,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
     optimizer_path = model_folder + f'/{model_name}_optimizer_best.pt'   
     early_stopping = False
     last_epoch = start_epoch + num_epochs - 1
-    best_epoch = {'epoch': -1, 'MSE': float('inf'), 'MAE': float('inf'), 'SSIM': float('-inf'), 'field_diff': float('inf')}
+    best_epoch = {'epoch': -1, 'MSE': float('inf'), 'MAE': float('inf'), 'SSIM': float('-inf'), 'bpa_MSE': float('inf'), 'bpa_RMSE': float('inf'), 'bpa_MAE': float('inf')}
 
     train_start_time = time.time()
     for epoch in range(start_epoch, start_epoch + num_epochs):

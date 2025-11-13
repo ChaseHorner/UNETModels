@@ -73,7 +73,6 @@ class BushelsPerAcreErrors(nn.Module):
         target_avg = torch.sum(target * mask) / count
 
         MSE = (pred_avg - target_avg) ** 2
-        RMSE = MSE ** 0.5
         MAE = torch.abs(pred_avg - target_avg)
 
-        return MSE, RMSE, MAE
+        return MSE, MAE
