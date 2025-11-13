@@ -10,10 +10,11 @@ import json
 #                'UNET_v1.3.3']
 
 # model_names = ['unet4a', 'unet4b','unet16a', 'unet16c', 'unet16d']
-model_paths = ['unet4/unet4a_2020', 'unet4/unet4a_2021', 'unet4/unet4a_2023',
-               'unet16/unet16a_2020', 'unet16/unet16a_2021', 'unet16/unet16a_2023',
-               'UNET_v1/UNET_v1.2.1_2020', 'UNET_v1/UNET_v1.2.1_2021', 'UNET_v1/UNET_v1.2.1_2023',
-               'auc/auc16a', 'auc/auc8a', 'auc/auc4a']
+model_paths = ['unet4/unet4a_2024', 'unet16/unet16a_2024', 'UNET_v1/UNET_v1.2.1_2024',
+               'unet4/unet4a_2022', 'unet16/unet16a_2022', 'UNET_v1/UNET_v1.2.1_2022',
+               'unet4/unet4a_2020_normal', 'unet4/unet4a_2021_normal','unet4/unet4a_2023_normal','unet4/unet4a_2024_normal',
+                'auc/auc4a_2020', 'auc/auc4a_2021', 'auc/auc4a_2022', 'auc/auc4a_2023',
+                'auc/auc16a',]
 
 
 
@@ -90,6 +91,16 @@ def monitor_jobs():
                     print(f"Job {job_id} for {model_path} ended. Adding to resubmit list.")
                     if model_path not in models_to_submit_or_resubmit:
                         models_to_submit_or_resubmit.append(model_path)
+                    del current_jobs[model_path]
+
+                # If the job has failed or cancelled, mark it as finished
+                if any(s in states for s in ['FAILED']):
+                    print(f"Job {job_id} for {model_path} has failed or was cancelled. Marking as finished.")
+                    with open(f'outputs/{model_path}/status.json', "r") as f:
+                        model_status = json.load(f)
+                    model_status["finished"] = True
+                    with open(f'outputs/{model_path}/status.json', "w") as f:
+                        json.dump(model_status, f)
                     del current_jobs[model_path]
             
             except subprocess.CalledProcessError:

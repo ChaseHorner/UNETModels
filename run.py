@@ -88,7 +88,7 @@ def train_and_evaluate_model(model_path, terminal=False):
             print(f"Error generating charts: {e}")
 
         try:
-            visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year_hid(), output_type='tiff')
+            visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year_hid())
         except Exception as e:
             print(f"Error visualizing predictions: {e}")
 

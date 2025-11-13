@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS, years=configs.VAL_YEARS).with_field_year_hid()
     MODEL_NAME = configs.MODEL_NAME  # Change to the desired model variant
-    MODEL_PATH = f'{configs.MODEL_FOLDER}/{MODEL_NAME}_best_epoch195.pt'
+    MODEL_PATH = f'{configs.MODEL_FOLDER}/{MODEL_NAME}_best_epoch268.pt'
 
     unet_model = unet.Unet4()
-    visualize_predictions(unet_model, configs.MODEL_FOLDER, MODEL_PATH, dataset, num_images=1, output_type='png')
+    visualize_predictions(unet_model, configs.MODEL_FOLDER, MODEL_PATH, dataset, num_images=10, output_type='png')
