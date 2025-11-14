@@ -60,12 +60,28 @@ def evaluate_epoch(model, valid_dataloader, device):
     model.eval()
     
     # Track running metrics
-    total_MSE, total_MAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
-    total_bpa_MSE, total_bpa_MAE = 0.0, 0.0
+    SSE, SAE, total_SSIM, total_count = 0.0, 0.0, 0.0, 0.0
+    bpa_SSE, bpa_SAE = 0.0, 0.0
+    total_target_sum = 0.0
+    minifield_variance_sum = 0.0
+    bpa_variance_sum = 0.0
+
 
     # Disable gradient computation for evaluation
     with torch.no_grad():
         # Loop over batches
+        for batch in valid_dataloader:
+            inputs = {k: v.to(device) for k, v in batch.items()}
+            target = inputs.pop("target")
+            mask = inputs.get("hmask")
+
+            total_target_sum += (target * mask).sum().item()
+            total_count += mask.sum().item()
+
+        global_minifield_mean = total_target_sum / total_count
+        global_field_mean = total_target_sum / len(valid_dataloader.dataset)
+
+
         for batch in valid_dataloader:
             inputs = {k: v.to(device) for k, v in batch.items()}
 
@@ -75,24 +91,32 @@ def evaluate_epoch(model, valid_dataloader, device):
             # Update running metrics
             count = (inputs.get('hmask') == 1.0).sum().item()
 
-            total_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
-            total_MAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
+            SSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
+            SAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
             total_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
-            total_count += count
 
             bpa_MSE, bpa_MAE = BushelsPerAcreErrors()(predictions, target, inputs.get('hmask'))
-            total_bpa_MSE += bpa_MSE
-            total_bpa_MAE += bpa_MAE
+            bpa_SSE += bpa_MSE
+            bpa_SAE += bpa_MAE
+
+            minifield_variance_sum += ((target - global_minifield_mean) ** 2 * inputs.get('hmask')).sum()
+            bpa_variance_sum += ((target - global_field_mean) ** 2 * inputs.get('hmask')).sum()
 
     # Compute the average loss across all pixels seen in the epoch
+
+    minifield_r2 = 1.0 - ( SSE / minifield_variance_sum ) if minifield_variance_sum > 0 else 0
+    bpa_r2 = 1.0 - ( bpa_SSE / bpa_variance_sum ) if bpa_variance_sum > 0 else 0
+
     return {
-        "MSE": total_MSE / total_count,
-        "RMSE": (total_MSE / total_count) ** 0.5,
-        "MAE": total_MAE / total_count,
+        "MSE": SSE / total_count,
+        "RMSE": (SSE / total_count) ** 0.5,
+        "MAE": SAE / total_count,
+        "minifield_R2": minifield_r2,
         "SSIM": total_SSIM / total_count,
-        "bpa_MSE": total_bpa_MSE / len(valid_dataloader.dataset),
-        "bpa_RMSE": (total_bpa_MSE / len(valid_dataloader.dataset)) ** 0.5,
-        "bpa_MAE": total_bpa_MAE / len(valid_dataloader.dataset)
+        "bpa_MSE": bpa_SSE / len(valid_dataloader.dataset),
+        "bpa_RMSE": (bpa_SSE / len(valid_dataloader.dataset)) ** 0.5,
+        "bpa_MAE": bpa_SAE / len(valid_dataloader.dataset),
+        "bpa_R2": bpa_r2
     }
 
 def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, start_epoch=1, metrics=None):
@@ -105,14 +129,16 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             "eval_mses": [],
             "eval_rmses": [],
             "eval_maes": [],
+            "minifield_R2s": [],
             "eval_ssims": [],
             "bpa_MSEs": [],
             "bpa_RMSEs": [],
             "bpa_MAEs": [],
+            "bpa_R2s": [],
         }
     train_mses, train_rmses, train_maes, train_ssims= [], [], [], []
-    eval_mses, eval_rmses, eval_maes, eval_ssims = [], [], [], [],
-    bpa_MSEs, bpa_RMSEs, bpa_MAEs = [], [], []
+    eval_mses, eval_rmses, eval_maes, eval_ssims, eval_minifield_R2s = [], [], [], [], []
+    bpa_MSEs, bpa_RMSEs, bpa_MAEs, bpa_R2s = [], [], [], []
     model_path = model_folder + f'/{model_name}_best.pt'
     optimizer_path = model_folder + f'/{model_name}_optimizer_best.pt'   
     early_stopping = False
@@ -136,10 +162,12 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         eval_rmses.append(to_float(eval_metrics["RMSE"]))
         eval_maes.append(to_float(eval_metrics["MAE"]))
         eval_ssims.append(to_float(eval_metrics["SSIM"]))
+        eval_minifield_R2s.append(to_float(eval_metrics["minifield_R2"]))
 
         bpa_MSEs.append(to_float(eval_metrics["bpa_MSE"]))
         bpa_RMSEs.append(to_float(eval_metrics["bpa_RMSE"]))
         bpa_MAEs.append(to_float(eval_metrics["bpa_MAE"]))
+        bpa_R2s.append(to_float(eval_metrics["bpa_R2"]))
 
         # Save best model based on eval loss
         if best_epoch['MSE'] > eval_metrics["MSE"]:
@@ -152,27 +180,30 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             best_epoch['bpa_MSE'] = eval_metrics["bpa_MSE"]
             best_epoch['bpa_RMSE'] = eval_metrics["bpa_RMSE"]
             best_epoch['bpa_MAE'] = eval_metrics["bpa_MAE"]
+            best_epoch['minifield_R2'] = eval_metrics["minifield_R2"]
+            best_epoch['bpa_R2'] = eval_metrics["bpa_R2"]
 
         # Print and log loss at end of epochs
         with open(f"{model_folder}/logs.txt", "a") as f:
             f.write("-" * 59 + "\n")
             f.write(
                 "| End of epoch {:3d} | Time: {:5.2f}s | Train MSE {:8.3f} | Train RMSE {:8.3f} | Train MAE {:8.3f} | Train SSIM {:8.3f} |"
-                "| Eval MSE {:8.3f} | Eval RMSE {:8.3f} | Eval MAE {:8.3f} | Eval SSIM {:8.3f} | bpa MSE {:8.3f} | bpa RMSE {:8.3f} | bpa MAE {:8.3f} |".format(
+                "| Eval MSE {:8.3f} | Eval RMSE {:8.3f} | Eval MAE {:8.3f} |Eval R2 {:8.3f} | Eval SSIM {:8.3f} | bpa MSE {:8.3f} | bpa RMSE {:8.3f} | bpa MAE {:8.3f} | bpa R2 {:8.3f} |".format(
                     epoch, time.time() - epoch_start_time, train_metrics["MSE"], train_metrics["RMSE"], train_metrics["MAE"], train_metrics["SSIM"],
-                    eval_metrics["MSE"], eval_metrics["RMSE"], eval_metrics["MAE"], eval_metrics["SSIM"],
-                    eval_metrics["bpa_MSE"], eval_metrics["bpa_RMSE"], eval_metrics["bpa_MAE"]
+                    eval_metrics["MSE"], eval_metrics["RMSE"], eval_metrics["MAE"], eval_metrics["minifield_R2"], eval_metrics["SSIM"],
+                    eval_metrics["bpa_MSE"], eval_metrics["bpa_RMSE"], eval_metrics["bpa_MAE"], eval_metrics["bpa_R2"]
                 )
                 + "\n"
             )
             f.write("-" * 59 + "\n")
 
         print("-" * 59)
-        print("| End of epoch {:3d} | Time: {:5.2f}s | Train MSE {:8.3f} | Train RMSE {:8.3f} | Train MAE {:8.3f} | Train SSIM {:8.3f} |"
-                "| Eval MSE {:8.3f} | Eval RMSE {:8.3f} | Eval MAE {:8.3f} | Eval SSIM {:8.3f} | bpa MSE {:8.3f} | bpa RMSE {:8.3f} | bpa MAE {:8.3f} |".format(
+        print(
+            "| End of epoch {:3d} | Time: {:5.2f}s | Train MSE {:8.3f} | Train RMSE {:8.3f} | Train MAE {:8.3f} | Train SSIM {:8.3f} |"
+                "| Eval MSE {:8.3f} | Eval RMSE {:8.3f} | Eval MAE {:8.3f} |Eval R2 {:8.3f} | Eval SSIM {:8.3f} | bpa MSE {:8.3f} | bpa RMSE {:8.3f} | bpa MAE {:8.3f} | bpa R2 {:8.3f} |".format(
                     epoch, time.time() - epoch_start_time, train_metrics["MSE"], train_metrics["RMSE"], train_metrics["MAE"], train_metrics["SSIM"],
-                    eval_metrics["MSE"], eval_metrics["RMSE"], eval_metrics["MAE"], eval_metrics["SSIM"],
-                    eval_metrics["bpa_MSE"], eval_metrics["bpa_RMSE"], eval_metrics["bpa_MAE"]
+                    eval_metrics["MSE"], eval_metrics["RMSE"], eval_metrics["MAE"], eval_metrics["minifield_R2"], eval_metrics["SSIM"],
+                    eval_metrics["bpa_MSE"], eval_metrics["bpa_RMSE"], eval_metrics["bpa_MAE"], eval_metrics["bpa_R2"]
                 )
         )
         print("-" * 59)
@@ -216,8 +247,8 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
     # Save epoch number to a txt file
     with open(f"{model_folder}/{model_name}_saved_epochs.txt", "a") as f:
-        f.write(f"Best Epoch: {best_epoch['epoch']} with MSE: {best_epoch['MSE']:.4f} | MAE: {best_epoch['MAE']:.4f} | SSIM: {best_epoch['SSIM']:.4f}" 
-                f"| bpa MSE: {best_epoch['bpa_MSE']:.4f} | bpa RMSE: {best_epoch['bpa_RMSE']:.4f} | bpa MAE: {best_epoch['bpa_MAE']:.4f}\n")
+        f.write(f"Best Epoch: {best_epoch['epoch']} with MSE: {best_epoch['MSE']:.4f} | RMSE: {best_epoch['RMSE']:.4f} | MAE: {best_epoch['MAE']:.4f} | R2: {best_epoch['R2']:.4f} | SSIM: {best_epoch['SSIM']:.4f}" 
+                f"| bpa MSE: {best_epoch['bpa_MSE']:.4f} | bpa RMSE: {best_epoch['bpa_RMSE']:.4f} | bpa MAE: {best_epoch['bpa_MAE']:.4f} | bpa R2: {best_epoch['bpa_R2']:.4f}\n")
 
     for key in metrics.keys():
         metrics[key] += eval(key)

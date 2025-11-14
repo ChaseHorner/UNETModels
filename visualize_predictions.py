@@ -64,7 +64,11 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
             field_diff = pred_total - target_total
 
             percent_diff = field_diff / target_total * 100
-            bpa_diff = (pred_bpa - target_bpa) / target_bpa * 100
+            
+            target_mean = np.nanmean(target_masked)
+            avg_variance = np.nanmean((target_masked - target_mean) ** 2)
+            mse = np.nanmean((pred_masked - target_masked) ** 2)
+            r2 = 1.0 - (mse / avg_variance)
             
             #Crop NaN borders for better visualization
             ys, xs = np.where(~np.isnan(target_masked))
@@ -83,7 +87,7 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
             titles = ['Prediction', 'Target', 'Difference (Target-Pred)']
             subtitles = [f'Total Predicted: {pred_total:.2f} | BPA: {pred_bpa:.2f}',
                          f'Total Target: {target_total:.2f} | BPA: {target_bpa:.2f}',
-                         f'Field Difference : {field_diff:.2f}\nPercent Difference: {percent_diff:.2f}%']
+                         f'Field Difference : {field_diff:.2f}\nPercent Difference: {percent_diff:.2f}%\nR²: {r2:.4f}']
             
             plt.figure(figsize=(120, 60), constrained_layout=True)
             plt.suptitle(f'{field_year} | HID: {hid}', fontsize=120)
