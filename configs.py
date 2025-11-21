@@ -6,6 +6,7 @@ MODEL_NAME = 'UNET_Base' # The name of the model, used for saving/loading
 MODEL_FOLDER = f'./outputs/{MODEL_NAME}' # The folder where model checkpoints and logs will be saved
 
 BASE_MODEL = 'unet'  # 'unet','unet4', 'unet8','unet16', or 'ynet'
+USE_IN_NORM = False  # If True, use Instance Normalization; if False, use Batch Normalization
 DATASET_PATH = '/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2'
 TRAIN_YEARS = ['2020', '2021', '2022', '2023']
 VAL_YEARS = ['2024']
@@ -16,15 +17,6 @@ Base config file
 '''
 
 #Model Info
-# C0 = 64
-# C1 = 128
-# C2 = 256
-# C3 = 512
-# C4 = 1024
-# C5 = 2000
-# C6 = 4000
-# C7 = 6000
-
 C0 = 32
 C1 = 64
 C2 = 128
@@ -48,7 +40,7 @@ BETA1 = 0.9
 
 # ===== Inputs ======
 
-INPUT_KEYS = ['lidar', 'sentinel', 'hmask']  # Options: 'lidar', 'sentinel', 'pre_season', 'in_season', 'hmask'
+INPUT_KEYS = ['lidar', 'sentinel', 'hmask']  # Options: 'lidar', 'sentinel'/'s2', 's2_reduced', 'pre_season', 'in_season', 'hmask'. 'auc'
 
 #Target Info
 TARGET_SIZE = [1, 256, 256]
@@ -61,6 +53,14 @@ LIDAR_SIZE = [L1, 2560, 2560]
 SEN_BANDS = 11
 SEN_PERIODS = 21
 S1 = SEN_BANDS * SEN_PERIODS + 1
+
+SEN_REDUCED_BANDS = 6
+if 's2_reduced' in INPUT_KEYS:
+	S1 = SEN_REDUCED_BANDS * SEN_PERIODS + 1
+
+if 'auc' in INPUT_KEYS:
+	S1 += 1  # Add one channel for AUC if included
+
 SEN_SIZE = [S1, 256, 256]
 
 

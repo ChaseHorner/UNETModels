@@ -11,8 +11,9 @@ save_path = "/resfs/GROUPS/KBS/kars_yield/prepped_data/training_tensors_v2"
 
 TARGET_SIZE = [1, 256, 256]
 LIDAR_SIZE = [5, 2560, 2560]
-S2_SIZE = [231, 256, 256]  # 11 bands * 21 periods + 1 yield mask
-AUC_SIZE = [1, 256, 256] # 15 time periods
+S2_SIZE = [231, 256, 256]  # 11 bands * 21 periods
+S2_REDUCED_SIZE = [126, 256, 256]  # 6 * 21
+AUC_SIZE = [1, 256, 256] 
 
 
 def make_completed_tensors(save_path):
@@ -87,6 +88,7 @@ def _load_field_wrapper(args):
 def load_field(field_path, output_path, dtype=torch.float32):
     lidar_tensors = []
     s2_tensors = []
+    s2_reduced_tensors = []
 
     for data_type in os.listdir(field_path):
         data_type_path = os.path.join(field_path, data_type)
@@ -123,9 +125,14 @@ def load_field(field_path, output_path, dtype=torch.float32):
                 with rasterio.open(file_path) as src:
                     arr = src.read().astype(np.float32)
                     if arr.ndim == 2:
-                        arr = arr[None, :, :]  # add channel dimension
+                        arr = arr[None, :, :]
                     tensor = torch.from_numpy(arr).type(dtype)
                     s2_tensors.append(tensor)
+
+                    #Get the bands 4,5,6,8A,11,NDVI for reduced
+                    arr = arr[[2, 4, 5, 7, 8, 10], :, :]
+                    tensor_reduced = torch.from_numpy(arr).type(dtype)
+                    s2_reduced_tensors.append(tensor_reduced)
 
             elif file.endswith('.tif') and data_type == 'lidar':
                 with rasterio.open(file_path) as src:
@@ -137,15 +144,16 @@ def load_field(field_path, output_path, dtype=torch.float32):
 
     s2_tensor = torch.cat(s2_tensors, dim=0)
     lidar_tensor = torch.cat(lidar_tensors, dim=0)
+    s2_reduced_tensor = torch.cat(s2_reduced_tensors, dim=0)
 
     shape_dict = {"lidar" : LIDAR_SIZE,
                     "s2" : S2_SIZE,
+                    "s2_reduced" : S2_REDUCED_SIZE,
                     "hmask" : TARGET_SIZE,
                     "hrvst" : TARGET_SIZE,
                     "auc" : AUC_SIZE
                     }
-
-    for data_type, final_tensor in zip(['lidar', 's2', 'hmask', 'hrvst', 'auc_150_300_only'], [lidar_tensor, s2_tensor, hmask_tensor, hrvst_tensor, auc_tensor]):
+    for data_type, final_tensor in zip(['lidar', 's2', 's2_reduced', 'hmask', 'hrvst', 'auc_150_300_only'], [lidar_tensor, s2_tensor, s2_reduced_tensor, hmask_tensor, hrvst_tensor, auc_tensor]):
         if data_type in shape_dict:
             expected_shape = shape_dict[data_type]
             if list(final_tensor.shape) != expected_shape:

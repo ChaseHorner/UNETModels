@@ -59,7 +59,11 @@ class Ynet(nn.Module):
             if name is not None:
                 inputs.append(name)
 
+        del s2_data, hmask, auc, x
+
         x2 = torch.cat(inputs, dim=1)
+        del inputs
+
         x3 = self.enc_3(x2)
         x4 = self.enc_4(x3)
         x5 = self.enc_5(x4)
@@ -71,13 +75,18 @@ class Ynet(nn.Module):
         in_weather = in_weather.expand(-1, -1, x7.shape[2], x7.shape[3])
         pre_weather = pre_weather.expand(-1, -1, x7.shape[2], x7.shape[3])
         x7 = torch.cat([x7, in_weather, pre_weather], dim=1)
+        del in_weather, pre_weather
 
         x = self.dec_7(x7, x6)
-        x = self.dec_6(x, x5)
-        x = self.dec_5(x, x4)
-        x = self.dec_4(x, x3)
-        x = self.dec_3(x, x2)
-
+        del x7,  x6
+        x = self.dec_6(x,  x5)
+        del x5
+        x = self.dec_5(x,  x4)
+        del x4
+        x = self.dec_4(x,  x3)
+        del x3
+        x = self.dec_3(x,  x2)
+        del x2
         x = self.final_output(x)
 
         return x
