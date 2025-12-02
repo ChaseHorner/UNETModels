@@ -4,18 +4,20 @@ import os
 import re
 import json
 
-# model_names = ['UNET_v1.1.3', 'UNET_v1.2.3', 'UNET_v1.3.3', 'UNET_v1.4.3']
-# model_names = ['unet4a', 'unet4b', 'unet4c', 'unet4d', 'unet4e', 'unet8a', 'unet8b', 'unet8c', 'unet8d', 'unet8e', 
-#                'unet16a', 'unet16b', 'unet16c', 'unet16d', 'unet16e',
-#                'UNET_v1.3.3']
 
-# model_names = ['unet4a', 'unet4b','unet16a', 'unet16c', 'unet16d']
-model_paths = ['unet4/unet4a_2024', 'unet16/unet16a_2024', 'UNET_v1/UNET_v1.2.1_2024',
-               'unet4/unet4a_2022', 'unet16/unet16a_2022', 'UNET_v1/UNET_v1.2.1_2022',
-               'unet4/unet4a_2020_normal', 'unet4/unet4a_2021_normal','unet4/unet4a_2023_normal','unet4/unet4a_2024_normal',
-                'auc/auc4a_2020', 'auc/auc4a_2021', 'auc/auc4a_2022', 'auc/auc4a_2023',
-                'auc/auc16a',]
-
+# model_paths = ['instancenorm/u4ai_24', 'instancenorm/u4ai_24_auc', 'instancenorm/u16ai_24', 'instancenorm/u1.2.1i_24']
+model_paths = [
+    'thanksgiving/u4_SHT16',
+    'thanksgiving/u4ASHT8',
+    'thanksgiving/u4_SLT8',
+    'thanksgiving/u4ASLT8',
+    
+    'jump_models/u4JA',
+    'jump_models/u4JB',
+    'jump_models/uS4JA',
+    'jump_models/uS4JB',
+    'jump_models/uS16JA',
+    'jump_models/uS16JB']
 
 
 def submit_training_job(model_path):
@@ -24,7 +26,7 @@ def submit_training_job(model_path):
     """
 
     model_name = model_path.split('/')[-1]
-    config_path = f"/kuhpc/scratch/kbs/c710h797/UNETModels/outputs/{model_path}/configs.py"
+    config_path = f"/kuhpc/work/kbs/c710h797/UNETModels/outputs/{model_path}/configs.py"
 
     # The bash command to submit the job using `sbatch`
     command = ['sbatch', f'--export=CONFIG={config_path}', f'--output=outputs/{model_path}/slurm-%j.out',
@@ -98,7 +100,7 @@ def monitor_jobs():
                     print(f"Job {job_id} for {model_path} has failed or was cancelled. Marking as finished.")
                     with open(f'outputs/{model_path}/status.json', "r") as f:
                         model_status = json.load(f)
-                    model_status["finished"] = True
+                    model_status["errored"] = True
                     with open(f'outputs/{model_path}/status.json', "w") as f:
                         json.dump(model_status, f)
                     del current_jobs[model_path]
@@ -123,7 +125,7 @@ def monitor_jobs():
             try:
                 with open(f'outputs/{model_path}/status.json', "r") as f:
                     model_status = json.load(f)
-                if not model_status["finished"]:
+                if not model_status["finished"] or model_status["errored"]:
                     all_finished = False
                     break
             except FileNotFoundError:
@@ -145,17 +147,46 @@ if __name__ == "__main__":
         model_status = {
         "model_name": model_name,
         "finished": False,
-        "metrics": None,
-        "model_path": None,
-        "optimizer_path": None,
         "early_stopping": False,
+        "errored": False,
+        "metrics": {},
+        "model_path": "",
+        "optimizer_path": "",
         "last_trained_epoch": 0,
-        "last_trained_time": None
+        "last_trained_time": "",
     }
         model_status_path = f'outputs/{model_path}/status.json'
 
+        # If status file doesn't exist, create it
         if not os.path.exists(model_status_path):
+            os.makedirs(os.path.dirname(model_status_path), exist_ok=True)
             with open(model_status_path, "w") as f:
                 json.dump(model_status, f)
+
+        # mark errored as false for rerun
+        else:
+            try:
+                with open(model_status_path, "r") as f:
+                    model_status = json.load(f)
+            except (json.JSONDecodeError, OSError, ValueError):
+                # File exists but is empty or corrupted → rebuild it
+                model_status = {
+                    "model_name": model_name,
+                    "finished": False,
+                    "early_stopping": False,
+                    "errored": False,
+                    "metrics": {},
+                    "model_path": "",
+                    "optimizer_path": "",
+                    "last_trained_epoch": 0,
+                    "last_trained_time": "",
+                }
+
+            # Update fields after load or rebuild
+            model_status["errored"] = False
+
+            with open(model_status_path, "w") as f:
+                json.dump(model_status, f)
+
 
     monitor_jobs()

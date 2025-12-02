@@ -39,6 +39,7 @@ class FieldDataset(Dataset):
 
         'lidar' : torch.load(os.path.join(sample_dir, 'lidar.pt')),
         'sentinel' : torch.load(os.path.join(sample_dir, 's2.pt')),
+        's2_reduced' : torch.load(os.path.join(sample_dir, 's2_reduced.pt')),
         # 'weather_in_season' : torch.load(os.path.join(sample_dir, 'in_season.pt')),  
         # 'weather_pre_season' : torch.load(os.path.join(sample_dir, 'pre_season.pt')),
 
@@ -48,6 +49,12 @@ class FieldDataset(Dataset):
         'hid' : hid,
         'field_year' : sample_dir.split(os.sep)[-2] + '_' + sample_dir.split(os.sep)[-1]
         }
+
+        if features['target'] is None:
+            raise RuntimeError(f"Target missing in sample {sample_dir}")
+
+        if features['s2_reduced'] is None:
+            raise RuntimeError(f"s2_reduced missing in sample {sample_dir}")
 
         returns = {key: features[key] for key in self.input_keys if key in features}
         returns['target'] = features['target']

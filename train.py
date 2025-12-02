@@ -5,6 +5,7 @@ from config_loader import configs
 from objective_functions import *
 import os
 
+
 def train_epoch(model, optimizer, criterion, train_dataloader, device):
     '''Train the model for one epoch.'''
     
@@ -20,11 +21,13 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
     for step, batch in enumerate(train_dataloader):
         inputs = {k: v.to(device) for k, v in batch.items()}
         target = inputs.pop("target")
+
         predictions = model(**inputs)
+        loss = criterion(predictions, target, inputs.get('hmask'))
+
 
         # Compute loss and backpropagate
         count = (inputs.get('hmask') == 1.0).sum().item()
-        loss = criterion(predictions, target, inputs.get('hmask'))
         (loss * count / configs.ACCUMULATION_STEPS).backward()
 
         # Update weights after accumulation steps
@@ -44,6 +47,8 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
     if (step + 1) % configs.ACCUMULATION_STEPS != 0:
         optimizer.step()
         optimizer.zero_grad()
+
+    torch.cuda.empty_cache() 
 
     # Compute the average loss across all pixels seen in the epoch
     return {
@@ -239,7 +244,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
                     os.replace(model_path, new_model_path)
                     model_path = new_model_path
                 if os.path.exists(optimizer_path):
-                    new_optimizer_path = os.path.join(model_folder, f"{model_name}_optimizer_best_epoch{best_epoch}.pt")
+                    new_optimizer_path = os.path.join(model_folder, f"{model_name}_optimizer_best_epoch{best_epoch['epoch']}.pt")
                     os.replace(optimizer_path, new_optimizer_path)
                     optimizer_path = new_optimizer_path
         except Exception as e:

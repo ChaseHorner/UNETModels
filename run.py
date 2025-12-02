@@ -5,6 +5,8 @@ from config_loader import configs
 import models.unet as unet
 import models.unet4 as unet4
 import models.unet16 as unet16
+import models.unet_shallow4 as unet_shallow4
+import models.unet_shallow16 as unet_shallow16
 import os
 import torch.optim as optim
 from train import train_model
@@ -41,7 +43,11 @@ def train_and_evaluate_model(model_path, terminal=False):
     model = unet.Unet() if configs.BASE_MODEL == 'unet8' else \
             unet4.Unet4() if configs.BASE_MODEL == 'unet4' else \
             unet16.Unet16() if configs.BASE_MODEL == 'unet16'\
+            else unet_shallow4.UnetShallow4() if (configs.BASE_MODEL == 'unet_shallow4') or (configs.BASE_MODEL == 'unet_shallow')\
+            else unet_shallow16.UnetShallow16() if configs.BASE_MODEL == 'unet_shallow16'\
             else unet.Unet()
+    
+    # model = torch.compile(model, mode='reduce-overhead')
 
     model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
 

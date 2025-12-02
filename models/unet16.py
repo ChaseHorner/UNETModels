@@ -37,6 +37,8 @@ class Unet16(nn.Module):
     def forward(self, **kwargs):
         x = kwargs.get('lidar')  # (b, lidar_channels, H, W) also called i1 or x1
         s2_data = kwargs.get('sentinel')
+        if s2_data is None:
+            s2_data = kwargs.get('s2_reduced')
         hmsk = kwargs.get('hmask')
         auc = kwargs.get('auc')
 
@@ -48,18 +50,30 @@ class Unet16(nn.Module):
         for name in [s2_data, hmsk, auc]:
             if name is not None:
                 inputs.append(name)
-
+        del s2_data, hmsk, auc, x
+        
         x2 = torch.cat(inputs, dim=1)
+        del inputs
+
         x3 = self.enc_3(x2)
         x4 = self.enc_4(x3)
         x5 = self.enc_5(x4)
         x6 = self.enc_6(x5)
-
+        
         x = self.dec_6(x6, x5)
+        del x6, x5
+
         x = self.dec_5(x, x4)
+        del x4
+
         x = self.dec_4(x, x3)
+        del x3
+
         x = self.dec_3(x, x2)
+        del x2
 
         x = self.final_output(x)
+        torch.cuda.empty_cache() 
+
 
         return x
