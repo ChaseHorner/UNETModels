@@ -7,36 +7,17 @@ import json
 
 # model_paths = ['instancenorm/u4ai_24', 'instancenorm/u4ai_24_auc', 'instancenorm/u16ai_24', 'instancenorm/u1.2.1i_24']
 model_paths = [
-    'thanksgiving/u4_SHT8',
-    'thanksgiving/u4_SHE8',
-    'thanksgiving/u4_SHE16',
-    'thanksgiving/u4_SHE32',
-    'thanksgiving/u4_SHE64',
-    'thanksgiving/u4ASHE8',
-    'thanksgiving/u4ARHE8',
-    'thanksgiving/u4_RHE8',
-    'thanksgiving/u4_SLE8',
-    'thanksgiving/u4ASLE8',
-    'thanksgiving/u4_RLE8',
-    'thanksgiving/u4ARLE8',
-
-    'thanksgiving/u8_SHE8',
-    'thanksgiving/u8_SHE16',
-    'thanksgiving/u8_SHE32',
-    'thanksgiving/u8_SHE64',
-    'thanksgiving/u8_SLE8',
-
-    'thanksgiving/u16_SHE8',
-    'thanksgiving/u16_SHE16',
-    'thanksgiving/u16_SHE32',
-    'thanksgiving/u16_SHE64',
-    'thanksgiving/u16_SLE8',
-
-    'thanksgiving/uS_SHE8',
-    'thanksgiving/uS_SHE16',
-    'thanksgiving/uS_SHE32',
-    'thanksgiving/uS_SHE64',
-    'thanksgiving/uS_SLE8']
+    'thanksgiving/u4_SHT16',
+    'thanksgiving/u4ASHT8',
+    'thanksgiving/u4_SLT8',
+    'thanksgiving/u4ASLT8',
+    
+    'jump_models/u4JA',
+    'jump_models/u4JB',
+    'jump_models/uS4JA',
+    'jump_models/uS4JB',
+    'jump_models/uS16JA',
+    'jump_models/uS16JB']
 
 
 def submit_training_job(model_path):

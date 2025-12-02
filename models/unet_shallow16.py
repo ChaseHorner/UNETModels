@@ -6,7 +6,7 @@ from models.components.encoder import Encoder
 from models.components.decoder import Decoder
 from models.components.convblock import ConvBlock
 
-class UnetShallow(nn.Module):
+class UnetShallow4(nn.Module):
     def __init__(
             self, 
             lidar_channels = configs.LIDAR_IN_CHANNELS, 
@@ -14,7 +14,7 @@ class UnetShallow(nn.Module):
             config = configs
             ):
 
-        super(UnetShallow, self).__init__()
+        super(UnetShallow4, self).__init__()
 
         self.lidar_channels = lidar_channels
         self.output_channels = output_channels
@@ -24,9 +24,7 @@ class UnetShallow(nn.Module):
         self.enc_2 = Encoder(config.C1, config.C2, scale_size=5)
         self.enc_3 = Encoder(config.C2 + config.S1, config.C3, scale_size=4)
         self.enc_4 = Encoder(config.C3, config.C4, scale_size=4)
-        self.enc_5 = Encoder(config.C4, config.C5, scale_size=4)
 
-        self.dec_5 = Decoder(config.C5, config.C4, skip_channels=config.C4, scale_size=4)
         self.dec_4 = Decoder(config.C4, config.C3, skip_channels=config.C3, scale_size=4)
         self.dec_3 = Decoder(config.C3, config.C2 + config.S1, skip_channels=config.C2 + config.S1, scale_size=4)
 
@@ -54,12 +52,9 @@ class UnetShallow(nn.Module):
         del inputs
         x3 = self.enc_3(x2)
         x4 = self.enc_4(x3)
-        x5 = self.enc_5(x4)
 
 
-        x = self.dec_5(x5, x4)
-        del x4
-        x = self.dec_4(x, x3)
+        x = self.dec_4(x4, x3)
         del x3
         x = self.dec_3(x, x2)
         del x2
