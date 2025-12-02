@@ -7,6 +7,10 @@ from models.components.decoder import Decoder
 from models.components.convblock import ConvBlock
 
 class Unet(nn.Module):
+    '''
+    A U-Net architecture with a bottleneck of [8x8] and scales down by factors of 2,5,2,2,2,2,2 in the encoder.
+    Needs C0-C7 and S1 defined in configs.
+    '''
     def __init__(
             self, 
             lidar_channels = configs.LIDAR_IN_CHANNELS, 
@@ -38,14 +42,21 @@ class Unet(nn.Module):
 
     def forward(self, **kwargs):
         x = kwargs.get('lidar', None)  # (b, lidar_channels, H, W) also called i1 or x1
-        s2_data = kwargs.get('sentinel', None)
+        s2_data = kwargs.get('sentinel', None) #May be None
+
+        #Handle reduced sentinel data
+        if s2_data is None:
+            s2_data = kwargs.get('s2_reduced')
+
+
         hmsk = kwargs.get('hmask', None)
-        auc = kwargs.get('auc', None)
+        auc = kwargs.get('auc', None) #May be None
 
         x = self.initial_conv(x)
         x = self.enc_1(x)
         x = self.enc_2(x)
 
+        #Concatenate all [256x256] data
         inputs = [x]
         for name in [s2_data, hmsk, auc]:
             if name is not None:

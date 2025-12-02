@@ -4,10 +4,20 @@ from torch.utils.data import Dataset, DataLoader
 import time
 
 class FieldDataset(Dataset):
-    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'auc', 'hmask'], years= None):
-        '''
-        root_dir: folder with subfolders per sample, each containing .pt files
-        input_keys: list of keys for input tensors        '''
+    '''
+    Dataset class for loading field data from preprocessed .pt files.
+    Each sample corresponds to a field-year combination and includes various features and the target variable.
+
+    Args (usually provided from config file):
+        root_dir (str): Root directory containing field subdirectories with .pt files.
+        input_keys (list): List of keys for input tensors (what features to include). 
+        years (list, optional): List of years to include. If None, include all years.
+
+    __getitem__ is used to load and return a single sample from the dataset, so the dataset can be used with a DataLoader for batching and shuffling.
+    '''
+
+
+    def __init__(self, root_dir, input_keys=['lidar', 'sentinel', 'in_season', 'pre_season', 'auc', 'hmask'], years=None):
         self.root_dir = root_dir
         self.input_keys = input_keys
 
@@ -27,6 +37,7 @@ class FieldDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
+        '''Loads and returns a single sample from the dataset at the specified index.'''
         sample_dir = self.samples[idx]
 
         #extract from hid.txt
@@ -62,6 +73,10 @@ class FieldDataset(Dataset):
         return returns
     
     def with_field_year_hid(self):
+        '''
+        Returns a new FieldDataset instance that includes 'field_year' and 'hid' in the input keys.
+        Used for field plotting
+        '''  
         new_dataset = FieldDataset.__new__(FieldDataset)
         new_dataset.samples = self.samples 
         new_dataset.input_keys = self.input_keys + ['field_year'] + ['hid']

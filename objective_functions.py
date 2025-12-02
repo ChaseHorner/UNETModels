@@ -2,21 +2,29 @@ import torch
 import torch.nn as nn
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 
-
+"""Objective functions for training and evaluation.
+Includes MSE, RMSE, MAE, Cropped SSIM, SSIM Loss, Whole Field Difference, and Bushels Per Acre Errors."""
 
 class MSE(nn.Module):
+    """Mean Squared Error loss with masking to specifiy the field among the clip"""
     def forward(self, predictions, target, mask):
         masked_diff = (predictions - target) ** 2 * mask
         valid_count = mask.sum()
         return masked_diff.sum() / valid_count
 
 class RMSE(nn.Module):
+    """
+    Root Mean Squared Error loss with masking to specifiy the field among the clip
+    This isn't used because computing RMSE directly is different than computing MSE and taking the square root outside the loss function.
+    Still here in case we want to train directly on RMSE.
+    """
     def forward(self, predictions, target, mask):
         masked_diff = (predictions - target) ** 2 * mask
         valid_count = mask.sum()
         return torch.sqrt(masked_diff.sum() / valid_count)
 
 class MAE(nn.Module):
+    """Mean Absolute Error loss with masking to specifiy the field among the clip"""
     def forward(self, predictions, target, mask):
         masked_diff = torch.abs(predictions - target) * mask
         valid_count = mask.sum()
@@ -50,6 +58,9 @@ class CroppedSSIM(nn.Module):
 class SSIM_Loss(nn.Module):
     """
     Loss based on Cropped SSIM.
+    SSIM Loss = 1 - SSIM
+    Used to maximize SSIM during training.
+    Haven't tried it yet
     """
     def __init__(self, data_range=350.0):
         super().__init__()
@@ -61,11 +72,13 @@ class SSIM_Loss(nn.Module):
         return loss
     
 class WholeFieldDiff(nn.Module):
+    """Computes the absolute difference between the sum of target and predictions over the masked area."""
     def forward(self, predictions, target, mask):
         diff = torch.sum(target * mask) - torch.sum(predictions * mask)
         return torch.abs(diff)
     
 class BushelsPerAcreErrors(nn.Module):
+    """Computes the MSE and MAE of the average predictions and targets over the masked area."""
     def forward(self, predictions, target, mask):
         count = torch.sum(mask).item()
 

@@ -18,15 +18,24 @@ import time
 import json
 import argparse
 
+
+'''
+Main script to train and evaluate a model based on the specified configuration.
+Loads model status, initializes model and optimizer, trains the model, evaluates it, and saves results. 
+'''
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def train_and_evaluate_model(model_path, terminal=False):
+def train_and_evaluate_model(model_path):
+    '''Trains and evaluates the model specified by model_path.'''
+
     # Load model status
     model_status_path = f'outputs/{model_path}/status.json'
     with open(model_status_path, "r") as f:
         model_status = json.load(f)
 
+    # Override learning rate if specified
     tune_lr = getattr(configs, 'TUNE_LR', None)
 
     # Skip if already finished
@@ -37,9 +46,11 @@ def train_and_evaluate_model(model_path, terminal=False):
     train_dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS, years=configs.TRAIN_YEARS)
     val_dataset = FieldDataset(configs.DATASET_PATH, input_keys=configs.INPUT_KEYS, years=configs.VAL_YEARS)
 
+    #Initialize data loaders
     train_loader = DataLoader(train_dataset, batch_size=configs.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=configs.BATCH_SIZE, shuffle=False)
 
+    # Initialize model and optimizer
     model = unet.Unet() if configs.BASE_MODEL == 'unet8' else \
             unet4.Unet4() if configs.BASE_MODEL == 'unet4' else \
             unet16.Unet16() if configs.BASE_MODEL == 'unet16'\
@@ -47,18 +58,18 @@ def train_and_evaluate_model(model_path, terminal=False):
             else unet_shallow16.UnetShallow16() if configs.BASE_MODEL == 'unet_shallow16'\
             else unet.Unet()
     
-    # model = torch.compile(model, mode='reduce-overhead')
-
     model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
 
     optimizer = optim.AdamW(model.parameters(), lr=(tune_lr if tune_lr is not None else configs.LEARNING_RATE), betas=[configs.BETA1, 0.999])
 
 
+    #If tune_lr is specified, use previous optimizer state but override learning rate (I rarely use this yet)
     if model_status["model_path"]:
         model.load_state_dict(torch.load(model_status["model_path"]))
         if tune_lr is None and model_status["optimizer_path"]:
             optimizer.load_state_dict(torch.load(model_status["optimizer_path"]))
 
+    # Train the model
     metrics, model_path, optimizer_path, early_stopping, last_epoch = train_model(
         model,
         configs.MODEL_NAME,
@@ -73,6 +84,7 @@ def train_and_evaluate_model(model_path, terminal=False):
         metrics=model_status.get("metrics", None)
     )
 
+    # Update model status
     model_status["metrics"] = metrics
     model_status["model_path"] = model_path
     model_status["optimizer_path"] = optimizer_path
@@ -83,7 +95,7 @@ def train_and_evaluate_model(model_path, terminal=False):
 
     os.makedirs(configs.MODEL_FOLDER, exist_ok=True)
 
-
+    # If early stopping triggered, save results and visualizations
     if early_stopping:
         model_status["finished"] = True
 
@@ -101,10 +113,7 @@ def train_and_evaluate_model(model_path, terminal=False):
         #Save to the ResFS
         save_resfs(configs.MODEL_FOLDER, configs.MODEL_NAME)
 
-    elif terminal:
-        chart_metrics(metrics, configs.MODEL_FOLDER, model_status["last_trained_epoch"])
-        visualize_predictions(model, configs.MODEL_FOLDER, model_status["model_path"], val_dataset.with_field_year_hid())
-
+    # Save updated model status
     json_path = os.path.join(configs.MODEL_FOLDER, f"status.json")
     with open(json_path, "w") as jf:
        json.dump(model_status, jf, default=str, indent=2)

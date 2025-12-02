@@ -7,6 +7,10 @@ from models.components.decoder import Decoder
 from models.components.convblock import ConvBlock
 
 class UnetShallow4(nn.Module):
+    '''
+    A U-Net architecture with a bottleneck of [4x4] and scales down by factors of 2,5,4,4,4 in the encoder.
+    Needs C0-C5 and S1 defined in configs.
+    '''
     def __init__(
             self, 
             lidar_channels = configs.LIDAR_IN_CHANNELS, 
@@ -28,22 +32,26 @@ class UnetShallow4(nn.Module):
 
         self.dec_5 = Decoder(config.C5, config.C4, skip_channels=config.C4, scale_size=4)
         self.dec_4 = Decoder(config.C4, config.C3, skip_channels=config.C3, scale_size=4)
-        self.dec_3 = Decoder(config.C3, config.C2 + config.S1, skip_channels=config.C2 + config.S1, scale_size=4)
+        self.dec_3 = Decoder(config.C3, config.C2 + config.S1, skip_channels=config.C2 + config.S1, scale_size=4) #Handle the concatenation here
 
-        self.final_output = ConvBlock(config.C2 + config.S1, output_channels)
+        self.final_output = ConvBlock(config.C2 + config.S1, output_channels) 
 
     def forward(self, **kwargs):
-        x = kwargs.get('lidar')  # (b, lidar_channels, H, W) also called i1 or x1
-        s2_data = kwargs.get('sentinel')
+        x = kwargs.get('lidar')  # (b, lidar_channels, H, W)
+        s2_data = kwargs.get('sentinel') #May be None
+        
+        #Handle reduced sentinel data
         if s2_data is None:
             s2_data = kwargs.get('s2_reduced')
+
         hmsk = kwargs.get('hmask')
-        auc = kwargs.get('auc')
+        auc = kwargs.get('auc') #May be None
 
         x = self.initial_conv(x)
         x = self.enc_1(x)
         x = self.enc_2(x)
 
+        #Concatenate all [256x256] data
         inputs = [x]
         for name in [s2_data, hmsk, auc]:
             if name is not None:
@@ -66,6 +74,5 @@ class UnetShallow4(nn.Module):
 
         x = self.final_output(x)
         torch.cuda.empty_cache() 
-
 
         return x

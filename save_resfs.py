@@ -1,6 +1,8 @@
 import os
 
 
+''' Saves model output results from local model folder to shared resfs folder.'''
+
 output_folder = '/resfs/GROUPS/KBS/kars_yield/model_outputs'
 
 def save_resfs(model_folder, model_name):

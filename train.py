@@ -22,20 +22,24 @@ def train_epoch(model, optimizer, criterion, train_dataloader, device):
         inputs = {k: v.to(device) for k, v in batch.items()}
         target = inputs.pop("target")
 
+        # Forward pass
         predictions = model(**inputs)
+        
+        # Compute loss based on the specified criterion
         loss = criterion(predictions, target, inputs.get('hmask'))
 
-
-        # Compute loss and backpropagate
+        #Calculate the number of in-field pixels
         count = (inputs.get('hmask') == 1.0).sum().item()
-        (loss * count / configs.ACCUMULATION_STEPS).backward()
+        
+        # Backward pass with gradient accumulation scaling
+        (loss * count / configs.ACCUMULATION_STEPS).backward() #multiply by count to scale per pixel loss based on field size (larger fields contribute more)
 
         # Update weights after accumulation steps
         if (step + 1) % configs.ACCUMULATION_STEPS == 0:
             optimizer.step()
             optimizer.zero_grad()
 
-        # Update running metrics
+        # Update running metrics (per_pixel measurements scaled by count so larger fields contribute more)
         running_MSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
         running_MAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
         running_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
@@ -74,7 +78,7 @@ def evaluate_epoch(model, valid_dataloader, device):
 
     # Disable gradient computation for evaluation
     with torch.no_grad():
-        # Loop over batches
+        # Loop over batches to compute global means
         for batch in valid_dataloader:
             inputs = {k: v.to(device) for k, v in batch.items()}
             target = inputs.pop("target")
@@ -83,32 +87,34 @@ def evaluate_epoch(model, valid_dataloader, device):
             total_target_sum += (target * mask).sum().item()
             total_count += mask.sum().item()
 
+        # Compute global means for R² calculation
         global_minifield_mean = total_target_sum / total_count
         global_field_mean = total_target_sum / len(valid_dataloader.dataset)
 
-
+        # Loop over batches again to compute metrics
         for batch in valid_dataloader:
             inputs = {k: v.to(device) for k, v in batch.items()}
 
             target = inputs.pop("target")
             predictions = model(**inputs) 
         
-            # Update running metrics
+            # Update running metrics (per_pixel measurements scaled by count so larger fields contribute more)
             count = (inputs.get('hmask') == 1.0).sum().item()
 
             SSE += MSE()(predictions, target, inputs.get('hmask')).item() * count
             SAE += MAE()(predictions, target, inputs.get('hmask')).item() * count
             total_SSIM += CroppedSSIM()(predictions, target, inputs.get('hmask')).item() * count
 
+            # Bushels per acre errors (not per-pixel so not scaled by count)
             bpa_MSE, bpa_MAE = BushelsPerAcreErrors()(predictions, target, inputs.get('hmask'))
             bpa_SSE += bpa_MSE
             bpa_SAE += bpa_MAE
 
+            # Update variance sums for R² calculation
             minifield_variance_sum += ((target - global_minifield_mean) ** 2 * inputs.get('hmask')).sum()
             bpa_variance_sum += ((target - global_field_mean) ** 2 * inputs.get('hmask')).sum()
 
-    # Compute the average loss across all pixels seen in the epoch
-
+    # Calculate R² values
     minifield_r2 = 1.0 - ( SSE / minifield_variance_sum ) if minifield_variance_sum > 0 else 0
     bpa_r2 = 1.0 - ( bpa_SSE / bpa_variance_sum ) if bpa_variance_sum > 0 else 0
 
@@ -125,6 +131,8 @@ def evaluate_epoch(model, valid_dataloader, device):
     }
 
 def train_model(model, model_name, model_folder, optimizer, criterion, train_dataloader, valid_dataloader, num_epochs, device, start_epoch=1, metrics=None):
+    """ Train the model and evaluate on validation set."""
+    
     if metrics is None:
         metrics = {
             "train_mses": [],
@@ -156,6 +164,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         epoch_start_time = time.time()
         # Training
         train_metrics = train_epoch(model, optimizer, criterion, train_dataloader, device)
+        # Append metrics
         train_mses.append(to_float(train_metrics["MSE"]))
         train_rmses.append(to_float(train_metrics["RMSE"]))
         train_maes.append(to_float(train_metrics["MAE"]))
@@ -163,6 +172,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
         # Evaluation
         eval_metrics = evaluate_epoch(model, valid_dataloader, device)
+        # Append metrics
         eval_mses.append(to_float(eval_metrics["MSE"]))
         eval_rmses.append(to_float(eval_metrics["RMSE"]))
         eval_maes.append(to_float(eval_metrics["MAE"]))
@@ -213,10 +223,13 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
         )
         print("-" * 59)
 
-        # Early stopping based on eval MSE
+        # Early stopping check based on eval MSE increase of 5% over best epoch
         if eval_metrics["MSE"] > 1.05 * best_epoch['MSE']:
             print(f"Evaluating stopping at epoch {epoch} due to increasing eval MSE.")
+
+            # Check early stopping criteria
             if early_stop(eval_mses, configs.EARLY_STOPPING_LENGTH, configs.EARLY_STOPPING_THRESHOLD):
+                #Update flags and break training loop
                 early_stopping = True
                 last_epoch = epoch
                 print(f"Early stopping triggered at epoch {epoch}.")
@@ -224,7 +237,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
                     f.write(f"Early stopping triggered at epoch {epoch}.\n")
                 break
 
-        # Stop training if total wall-clock time exceeds 5 hours
+        # Stop training if total wall-clock time exceeds 5 hours (Should never hit if training 100 epochs)
         elapsed_hours = (time.time() - train_start_time) / 3600.0
         if elapsed_hours >= 5.75:
             print(f"Stopping training after {elapsed_hours:.2f} hours (limit: 5.75 hours).")
@@ -233,6 +246,8 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             break
     
     print(f"Training completed in {time.time() - train_start_time:.2f} seconds.")
+    
+    # Save final model if training completed without early stopping
     if best_epoch['epoch'] != (start_epoch + num_epochs):
         torch.save(model.state_dict(), model_folder + f'/{model_name}_{num_epochs}.pt')
         torch.save(optimizer.state_dict(), model_folder + f'/{model_name}_optimizer_{num_epochs}.pt')
@@ -266,9 +281,12 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
 
 
 def to_float(x):
+    """Convert a tensor or numeric value to a float."""
     return x.item() if torch.is_tensor(x) else float(x)
 
 def early_stop(eval_mses, length=50, threshold=0.0):
+    '''Checks if the slope of the eval_mses over the last 50 epochs is above the threshold (0.0).'''
+
     if len(eval_mses) < length + 1:
         return False
     recent_vals = eval_mses[-length:]

@@ -8,17 +8,22 @@ from  matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
 
 
-MAX = 150
-cmap=LinearSegmentedColormap.from_list('rg',["r", "w", "g"], N=256)
+MAX = 150 # Max value for color scale
+cmap=LinearSegmentedColormap.from_list('rg',["r", "w", "g"], N=256) # Red-White-Green colormap for differences
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def visualize_predictions(model, model_folder, model_path, dataset, num_images=10, output_type='png'):
+    '''Visualizes predictions from the model on random samples from the dataset.'''
+
+    # Load model
     model.load_state_dict(torch.load(model_path))
     model.to(device)
     model.eval()
 
     # Make sure to not sample more than available
     num_images = min(num_images, len(dataset))
+
+    # Randomly select indices
     indices = torch.randperm(len(dataset))[:num_images]
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
@@ -65,6 +70,7 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
 
             percent_diff = field_diff / target_total * 100
             
+            #Calculate R²
             target_mean = np.nanmean(target_masked)
             avg_variance = np.nanmean((target_masked - target_mean) ** 2)
             mse = np.nanmean((pred_masked - target_masked) ** 2)
@@ -79,6 +85,7 @@ def visualize_predictions(model, model_folder, model_path, dataset, num_images=1
                 target_masked = target_masked[y_min:y_max+1, x_min:x_max+1]
                 diff_masked = diff_masked[y_min:y_max+1, x_min:x_max+1]
 
+            # Create plots
             display_list = [
                 np.clip(pred_masked, 0, MAX),
                 np.clip(target_masked, -MAX, MAX),

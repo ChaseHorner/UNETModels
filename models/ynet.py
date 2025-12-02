@@ -8,6 +8,12 @@ from models.components.convblock import ConvBlock
 from models.components.weather_compression import WeatherCompressionAvgPool
 
 class Ynet(nn.Module):
+    '''
+    **NOT USED YET**
+    A Y-Net architecture with weather data integrated at the bottleneck.
+    Needs C0-C7, W1-W2, S1, IN_SEASON_KERNEL_SIZE, and PRE_SEASON_KERNEL_SIZE defined in configs.
+    '''
+
     def __init__(
             self, 
             lidar_channels = configs.LIDAR_IN_CHANNELS, 
@@ -22,6 +28,7 @@ class Ynet(nn.Module):
         self.weather_channels = weather_channels
         self.output_channels = output_channels
 
+        #Define weather compression modules
         self.in_weather_in_season = WeatherCompressionAvgPool(weather_channels, config.W1, kernel_size=config.IN_SEASON_KERNEL_SIZE)
         self.in_weather_pre_season = WeatherCompressionAvgPool(weather_channels, config.W2, kernel_size=config.PRE_SEASON_KERNEL_SIZE)
 
@@ -44,9 +51,15 @@ class Ynet(nn.Module):
 
     def forward(self, **kwargs):
         x = kwargs.get('lidar')  # (b, lidar_channels, H, W) also called i1 or x1
-        s2_data = kwargs.get('sentinel')
+        s2_data = kwargs.get('sentinel') #May be None
+        #Handle reduced sentinel data
+        if s2_data is None:
+            s2_data = kwargs.get('s2_reduced')
+            
         hmask = kwargs.get('hmask')
-        auc = kwargs.get('auc')
+        auc = kwargs.get('auc') #May be None
+
+        #Process weather data through compression modules
         in_weather = self.in_weather_in_season(kwargs.get('weather_in_season'))
         pre_weather = self.in_weather_pre_season(kwargs.get('weather_out_season'))
 
@@ -54,6 +67,7 @@ class Ynet(nn.Module):
         x = self.enc_1(x)
         x = self.enc_2(x)
 
+        #Concatenate all [256x256] data
         inputs = [x]
         for name in [s2_data, hmask, auc]:
             if name is not None:
@@ -70,6 +84,7 @@ class Ynet(nn.Module):
         x6 = self.enc_6(x5)
         x7 = self.enc_7(x6)
 
+        #Expand weather data to match spatial dimensions and concatenate
         in_weather = in_weather.unsqueeze(-1).unsqueeze(-1)
         pre_weather = pre_weather.unsqueeze(-1).unsqueeze(-1)
         in_weather = in_weather.expand(-1, -1, x7.shape[2], x7.shape[3])
