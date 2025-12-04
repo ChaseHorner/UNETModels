@@ -142,7 +142,7 @@ def train_model(model, model_name, model_folder, optimizer, criterion, train_dat
             "eval_mses": [],
             "eval_rmses": [],
             "eval_maes": [],
-            "minifield_R2s": [],
+            "eval_minifield_R2s": [],
             "eval_ssims": [],
             "bpa_MSEs": [],
             "bpa_RMSEs": [],
