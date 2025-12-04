@@ -1,0 +1,11 @@
+{
+  "model_name": "example_model",
+  "finished": false,
+  "early_stopping": false,
+  "errored": false,
+  "metrics": {},
+  "model_path": "",
+  "optimizer_path": "",
+  "last_trained_epoch": 0,
+  "last_trained_time": ""
+}
